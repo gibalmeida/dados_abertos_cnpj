@@ -73,7 +73,7 @@ Onde:
   - naturezas_juridicas (.NATJUCSV)
   - cnaes (.CNAECSV)
   - qualificacoes_de_socios (QUALSCSV)
-  - motivos_situacao_cadastral (.MOTICSV) (ainda não implementado)
+  - motivos_de_situacoes_cadastrais (.MOTICSV)
   - simples (.SIMPLES.CSV) (ainda não implementado)
   - socioes (.???) (ainda não implementado)
 

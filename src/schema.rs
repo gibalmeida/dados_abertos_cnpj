@@ -53,6 +53,13 @@ table! {
 }
 
 table! {
+    motivos_de_situacoes_cadastrais (id) {
+        id -> Integer,
+        nome -> Varchar,
+    }
+}
+
+table! {
     municipios (id) {
         id -> Integer,
         nome -> Varchar,
@@ -84,6 +91,7 @@ allow_tables_to_appear_in_same_query!(
     cnaes,
     empresas,
     estabelecimentos,
+    motivos_de_situacoes_cadastrais,
     municipios,
     naturezas_juridicas,
     paises,

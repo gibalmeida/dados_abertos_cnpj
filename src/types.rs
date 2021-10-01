@@ -7,7 +7,8 @@ pub enum TipoDeArquivo {
     NaturezasJuridicas,
     QualificacoesDeSocios,
     Paises,
-    Municipios
+    Municipios,
+    MotivosDeSituacoesCadastrais
 }
 
 impl FromStr for TipoDeArquivo {
@@ -23,6 +24,7 @@ impl FromStr for TipoDeArquivo {
             "qualificacoes_de_socios" => Ok(TipoDeArquivo::QualificacoesDeSocios),
             "paises" => Ok(TipoDeArquivo::Paises),
             "municipios" => Ok(TipoDeArquivo::Municipios),
+            "motivos_de_situacoes_cadastrais" => Ok(TipoDeArquivo::MotivosDeSituacoesCadastrais),
             _      => Err(()),
         }
     }
@@ -35,7 +37,7 @@ pub struct Config {
 impl Config {
     pub fn new(args: &[String]) -> Result<Config, &str> {
         if args.len() < 2 {
-            return Err("Parâmetros insuficientes! Por favor, execute o comando com um tipo de arquivo como parâmetro. Os tipos válidos de arquivos são: empresas, estabelecimentos, cnaes, naturezas_juridicas, paises, municipios, qualificacoes_de_socios e ...")
+            return Err("Parâmetros insuficientes! Por favor, execute o comando com um tipo de arquivo como parâmetro. Os tipos válidos de arquivos são: empresas, estabelecimentos, cnaes, naturezas_juridicas, paises, municipios, qualificacoes_de_socios, motivos_de_situacoes_cadastrais e ...")
         }
 
         let tipo_de_arquivo = match TipoDeArquivo::from_str(&args[1]) {

@@ -27,6 +27,8 @@ use std::process;
 use bigdecimal::{BigDecimal};
 use std::error::Error;
 
+use crate::models::NewMotivoDeSituacaoCadastral;
+
 
 pub struct Database {
     db_connection: MysqlConnection
@@ -94,6 +96,14 @@ impl Database {
     
         diesel::insert_into(qualificacoes_de_socios::table)
             .values(new_qualif_socio)
+            .execute(&self.db_connection)
+    }
+
+    pub fn insert_motivo_de_situacao_cadastral(&self, new_motivo_sit_cad: &NewMotivoDeSituacaoCadastral) -> QueryResult<usize> {
+        use schema::motivos_de_situacoes_cadastrais;
+    
+        diesel::insert_into(motivos_de_situacoes_cadastrais::table)
+            .values(new_motivo_sit_cad)
             .execute(&self.db_connection)
     }
 
@@ -229,6 +239,7 @@ impl Import {
             TipoDeArquivo::QualificacoesDeSocios => self.import_default(rdr),
             TipoDeArquivo::Paises => self.import_default(rdr),
             TipoDeArquivo::Municipios => self.import_default(rdr),
+            TipoDeArquivo::MotivosDeSituacoesCadastrais => self.import_default(rdr)
         } {
             println!("Erro ao executar: {}", err);
             process::exit(1);
@@ -340,10 +351,8 @@ impl Import {
                         nome: &nome,
                     };
         
-                    //  println!("{:?}", record);
                     self.db.insert_cnae(&tbl_record)
                         .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
-                    // self.insert_into(schema::cnaes::table, tbl_record);
                 },
                 TipoDeArquivo::Estabelecimentos => {
 
@@ -387,6 +396,15 @@ impl Import {
                     self.db.insert_municipios( &tbl_record)
                         .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
                     
+                },
+                TipoDeArquivo::MotivosDeSituacoesCadastrais => {
+                    let tbl_record = NewMotivoDeSituacaoCadastral {
+                        id: csv_record.id,
+                        nome: &nome,
+                    };
+        
+                    self.db.insert_motivo_de_situacao_cadastral(&tbl_record)
+                        .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
                 },        
             };
 

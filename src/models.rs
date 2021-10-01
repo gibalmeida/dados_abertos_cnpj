@@ -1,7 +1,7 @@
 use bigdecimal::BigDecimal;
 use chrono::{NaiveDate};
 
-use super::schema::{empresas, estabelecimentos, naturezas_juridicas, qualificacoes_de_socios, cnaes, paises, municipios};
+use super::schema::{empresas, estabelecimentos, naturezas_juridicas, qualificacoes_de_socios, cnaes, paises, municipios, motivos_de_situacoes_cadastrais};
 
 #[derive(Queryable)]
 pub struct Empresa {
@@ -79,6 +79,20 @@ pub struct NewPais<'a> {
 }
 
 #[derive(Queryable)]
+pub struct MotivoDeSituacaoCadastral {
+    pub id: i32,
+    pub nome: String,
+}
+
+#[derive(Debug,Insertable)]
+#[table_name="motivos_de_situacoes_cadastrais"] 
+pub struct NewMotivoDeSituacaoCadastral<'a> {
+    pub id: i32,
+    pub nome: &'a str,
+}
+
+
+#[derive(Queryable)]
 pub struct Municipio {
     pub id: i32,
     pub nome: String,
@@ -90,7 +104,6 @@ pub struct NewMunicipio<'a> {
     pub id: i32,
     pub nome: &'a str,
 }
-
 #[derive(Queryable)]
 pub struct Estabelecimento {
     pub cnpj_basico: String,
