@@ -1,8 +1,8 @@
 use std::env;
 use std::process;
 
-use dados_abertos_cnpj::Import;
-use dados_abertos_cnpj::types::Config;
+use dados_abertos_cnpj::import::Import;
+use dados_abertos_cnpj::config::Config;
 
 fn main() {
 
