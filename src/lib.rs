@@ -43,66 +43,66 @@ impl Database {
         }
     }
 
-    pub fn insert_empresa(&self, new_empresa: &NewEmpresa ) -> QueryResult<usize> {
+    pub fn upsert_empresa(&self, new_empresa: &NewEmpresa ) -> QueryResult<usize> {
         use schema::empresas;
     
-        diesel::insert_into(empresas::table)
+        diesel::replace_into(empresas::table)
             .values(new_empresa)
             .execute(&self.db_connection)
     }
 
-    pub fn insert_estabelecimento(&self, new_estabelecimento: &NewEstabelecimento ) -> QueryResult<usize> {
+    pub fn upsert_estabelecimento(&self, new_estabelecimento: &NewEstabelecimento ) -> QueryResult<usize> {
         use schema::estabelecimentos;
     
-        diesel::insert_into(estabelecimentos::table)
+        diesel::replace_into(estabelecimentos::table)
             .values(new_estabelecimento)
             .execute(&self.db_connection)
     }
 
-    pub fn insert_cnae(&self, new_cnae: &NewCNAE) -> QueryResult<usize> {
+    pub fn upsert_cnae(&self, new_cnae: &NewCNAE) -> QueryResult<usize> {
         use schema::cnaes;
 
-        diesel::insert_into(cnaes::table)
+        diesel::replace_into(cnaes::table)
             .values(new_cnae)
             .execute(&self.db_connection)
     }
 
-    pub fn insert_natureza_juridica(&self, new_natureza_juridica: &NewNaturezaJuridica) -> QueryResult<usize> {
+    pub fn upsert_natureza_juridica(&self, new_natureza_juridica: &NewNaturezaJuridica) -> QueryResult<usize> {
         use schema::naturezas_juridicas;
     
-        diesel::insert_into(naturezas_juridicas::table)
+        diesel::replace_into(naturezas_juridicas::table)
             .values(new_natureza_juridica)
             .execute(&self.db_connection)
     }
 
-    pub fn insert_paises(&self, new_pais: &NewPais) -> QueryResult<usize> {
+    pub fn upsert_paises(&self, new_pais: &NewPais) -> QueryResult<usize> {
         use schema::paises;
     
-        diesel::insert_into(paises::table)
+        diesel::replace_into(paises::table)
             .values(new_pais)
             .execute(&self.db_connection)
     }
     
-    pub fn insert_municipios(&self, new_municipio: &NewMunicipio) -> QueryResult<usize> {
+    pub fn upsert_municipios(&self, new_municipio: &NewMunicipio) -> QueryResult<usize> {
         use schema::municipios;
     
-        diesel::insert_into(municipios::table)
+        diesel::replace_into(municipios::table)
             .values(new_municipio)
             .execute(&self.db_connection)
     }
     
-    pub fn insert_qualificacoes_de_socios(&self, new_qualif_socio: &NewQualificacaoDeSocio) -> QueryResult<usize> {
+    pub fn upsert_qualificacoes_de_socios(&self, new_qualif_socio: &NewQualificacaoDeSocio) -> QueryResult<usize> {
         use schema::qualificacoes_de_socios;
     
-        diesel::insert_into(qualificacoes_de_socios::table)
+        diesel::replace_into(qualificacoes_de_socios::table)
             .values(new_qualif_socio)
             .execute(&self.db_connection)
     }
 
-    pub fn insert_motivo_de_situacao_cadastral(&self, new_motivo_sit_cad: &NewMotivoDeSituacaoCadastral) -> QueryResult<usize> {
+    pub fn upsert_motivo_de_situacao_cadastral(&self, new_motivo_sit_cad: &NewMotivoDeSituacaoCadastral) -> QueryResult<usize> {
         use schema::motivos_de_situacoes_cadastrais;
     
-        diesel::insert_into(motivos_de_situacoes_cadastrais::table)
+        diesel::replace_into(motivos_de_situacoes_cadastrais::table)
             .values(new_motivo_sit_cad)
             .execute(&self.db_connection)
     }
@@ -270,7 +270,7 @@ impl Import {
                 porte: Some(&porte_da_empresa),
                 ente_federativo_responsavel: Some(&ente_federativo_responsavel)
             };
-            self.db.insert_empresa(&tbl_record)
+            self.db.upsert_empresa(&tbl_record)
                 .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
         }
         Ok(())
@@ -325,7 +325,7 @@ impl Import {
                 data_situacao_especial: naive_date_from_str(record.data_situacao_especial)
 
             };
-            self.db.insert_estabelecimento(&tbl_record)
+            self.db.upsert_estabelecimento(&tbl_record)
                 .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
         }
         Ok(())
@@ -351,7 +351,7 @@ impl Import {
                         nome: &nome,
                     };
         
-                    self.db.insert_cnae(&tbl_record)
+                    self.db.upsert_cnae(&tbl_record)
                         .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
                 },
                 TipoDeArquivo::Estabelecimentos => {
@@ -363,7 +363,7 @@ impl Import {
                         nome: &nome,
                     };
         
-                    self.db.insert_natureza_juridica( &tbl_record)
+                    self.db.upsert_natureza_juridica( &tbl_record)
                         .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
                     
                 },
@@ -373,7 +373,7 @@ impl Import {
                         nome: &nome,
                     };
         
-                    self.db.insert_qualificacoes_de_socios(&tbl_record)
+                    self.db.upsert_qualificacoes_de_socios(&tbl_record)
                         .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
                     
                 },
@@ -383,7 +383,7 @@ impl Import {
                         nome: &nome,
                     };
         
-                    self.db.insert_paises( &tbl_record)
+                    self.db.upsert_paises( &tbl_record)
                         .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
                     
                 },
@@ -393,7 +393,7 @@ impl Import {
                         nome: &nome,
                     };
         
-                    self.db.insert_municipios( &tbl_record)
+                    self.db.upsert_municipios( &tbl_record)
                         .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
                     
                 },
@@ -403,7 +403,7 @@ impl Import {
                         nome: &nome,
                     };
         
-                    self.db.insert_motivo_de_situacao_cadastral(&tbl_record)
+                    self.db.upsert_motivo_de_situacao_cadastral(&tbl_record)
                         .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
                 },        
             };
