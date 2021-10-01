@@ -1,0 +1,4 @@
+CREATE TABLE paises (
+    id INT PRIMARY KEY,
+    nome VARCHAR(200) NOT NULL
+)

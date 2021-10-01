@@ -1,0 +1,1 @@
+DROP TABLE naturezas_juridicas

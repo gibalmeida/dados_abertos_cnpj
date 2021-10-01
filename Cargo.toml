@@ -1,0 +1,18 @@
+[package]
+name = "dados_abertos_cnpj"
+version = "0.1.0"
+edition = "2018"
+authors = ["Gilberto Cezar de Almeida <gibalmeida@gmail.com>"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+csv = "1.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_bytes = "0.11"
+serde_derive = "1"
+encoding = "0.2"
+diesel = { version = "1.4.4", features = ["mysql","numeric","chrono"] }
+dotenv = "0.15.0"
+bigdecimal = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
