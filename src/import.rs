@@ -47,7 +47,7 @@ struct EstabelecimentoCsvRecord<'a> {
     nome_fantasia: &'a [u8],
     situacao_cadastral: Option<String>,
     data_situacao_cadastral: Option<String>,
-    motivo_situacao_cadastral: Option<String>,
+    motivo_situacao_cadastral: Option<i32>,
     #[serde(with = "serde_bytes")]
     nome_da_cidade_no_exterior: &'a [u8],
     #[serde(deserialize_with = "csv::invalid_option")]
@@ -56,7 +56,7 @@ struct EstabelecimentoCsvRecord<'a> {
     #[serde(deserialize_with = "csv::invalid_option")]
     cnae_fiscal_principal: Option<i32>,
     #[serde(deserialize_with = "csv::invalid_option")]
-    cnae_fiscal_secundaria: Option<i32>,
+    cnae_fiscal_secundaria: Option<String>,
     #[serde(with = "serde_bytes")]
     tipo_logradouro: &'a [u8],
     #[serde(with = "serde_bytes")]

@@ -1,0 +1,1 @@
+ALTER TABLE estabelecimentos MODIFY COLUMN cnae_fiscal_secundaria INT
