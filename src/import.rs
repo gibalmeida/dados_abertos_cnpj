@@ -174,6 +174,7 @@ impl Import {
             self.db.upsert_empresa(&tbl_record)
                 .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
         }
+        self.db.commit();
         Ok(())
     }
 
@@ -229,6 +230,7 @@ impl Import {
             self.db.upsert_estabelecimento(&tbl_record)
                 .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
         }
+        self.db.commit();
         Ok(())
     }    
 
@@ -310,7 +312,8 @@ impl Import {
             };
 
             
-        }    
+        }
+        self.db.commit();    
         Ok(())
     }
 
