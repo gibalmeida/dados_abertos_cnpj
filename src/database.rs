@@ -1,6 +1,6 @@
 use std::env;
 
-use diesel::prelude::*;
+use diesel::{prelude::*, sql_query};
 use diesel::mysql::MysqlConnection;
 use dotenv::dotenv;
 use crate::models::*;
@@ -13,9 +13,23 @@ impl Database {
     pub fn new() -> Database {
         let db_connection = Self::establish_connection();
 
+        // Desativa o autocommit, checagens de chaves estrangeiras e checagens de chaves únicas (unique)
+        // para dar mais performance nas gravações do banco de dados (vide: https://dev.mysql.com/doc/refman/8.0/en/optimizing-innodb-bulk-data-loading.html)
+        sql_query("SET autocommit=0").execute(&db_connection).expect("Erro ao desativar o autocommit!");
+        sql_query("SET foreign_key_checks = 0").execute(&db_connection).expect("Erro ao desativar checagens de chaves estrangeiras!");
+        sql_query("SET unique_checks=0").execute(&db_connection).expect("Erro ao desativar checagens de chaves únicas!");
+        
+
         Database {
             db_connection
         }
+    }
+
+    pub fn commit(&self) {
+        // Faz o COMMIT para gravar os registros no banco de dados
+        sql_query("COMMIT").execute(&self.db_connection).expect("Erro ao executar o commit!");
+        sql_query("SET foreign_key_checks = 1").execute(&self.db_connection).expect("Erro ao ativar novamente checagens de chaves estrangeiras!");
+        sql_query("SET unique_checks=1").execute(&self.db_connection).expect("Erro ao ativar novamente checagens de chaves únicas!");        
     }
 
     pub fn upsert_empresa(&self, new_empresa: &NewEmpresa ) -> QueryResult<usize> {
