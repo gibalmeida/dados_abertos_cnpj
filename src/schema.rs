@@ -87,6 +87,14 @@ table! {
     }
 }
 
+joinable!(empresas -> naturezas_juridicas (natureza_juridica));
+joinable!(empresas -> qualificacoes_de_socios (qualificacao_do_responsavel));
+joinable!(estabelecimentos -> cnaes (cnae_fiscal_principal));
+joinable!(estabelecimentos -> empresas (cnpj_basico));
+joinable!(estabelecimentos -> motivos_de_situacoes_cadastrais (motivo_situacao_cadastral));
+joinable!(estabelecimentos -> municipios (municipio));
+joinable!(estabelecimentos -> paises (pais));
+
 allow_tables_to_appear_in_same_query!(
     cnaes,
     empresas,

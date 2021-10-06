@@ -10,4 +10,5 @@ pub mod models;
 pub mod types;
 pub mod import;
 pub mod database;
+pub mod error;
 

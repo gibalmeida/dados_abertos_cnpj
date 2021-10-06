@@ -1,10 +1,11 @@
 use bigdecimal::BigDecimal;
-use chrono::{NaiveDate};
+use chrono::NaiveDate;
 use serde::Serialize;
 
 use super::schema::{empresas, estabelecimentos, naturezas_juridicas, qualificacoes_de_socios, cnaes, paises, municipios, motivos_de_situacoes_cadastrais};
 
-#[derive(Queryable, Serialize)]
+#[derive(Identifiable, Queryable, Serialize)]
+#[primary_key(cnpj_basico)]
 pub struct Empresa {
     pub cnpj_basico: String,
     pub razao_social: String,
@@ -27,7 +28,8 @@ pub struct NewEmpresa<'a> {
     pub ente_federativo_responsavel: Option<&'a str>
 }
 
-#[derive(Queryable)]
+#[derive(Identifiable,Queryable, Serialize)]
+#[table_name="naturezas_juridicas"]
 pub struct NaturezaJuridica {
     pub id: i32,
     pub nome: String,
@@ -40,7 +42,8 @@ pub struct NewNaturezaJuridica<'a> {
     pub nome: &'a str,
 }
 
-#[derive(Queryable)]
+#[derive(Identifiable,Queryable, Serialize)]
+#[table_name="qualificacoes_de_socios"]
 pub struct QualificacaoDeSocio {
     pub id: i32,
     pub nome: String,
@@ -53,7 +56,8 @@ pub struct NewQualificacaoDeSocio<'a> {
     pub nome: &'a str,
 }
 
-#[derive(Queryable)]
+#[derive(Identifiable,Queryable, Serialize)]
+#[table_name="cnaes"]
 pub struct CNAE {
     pub id: i32,
     pub nome: String,
@@ -66,7 +70,8 @@ pub struct NewCNAE<'a> {
     pub nome: &'a str,
 }
 
-#[derive(Queryable)]
+#[derive(Identifiable,Queryable, Serialize)]
+#[table_name="paises"]
 pub struct Pais {
     pub id: i32,
     pub nome: String,
@@ -79,7 +84,8 @@ pub struct NewPais<'a> {
     pub nome: &'a str,
 }
 
-#[derive(Queryable)]
+#[derive(Identifiable,Queryable, Serialize)]
+#[table_name="motivos_de_situacoes_cadastrais"]
 pub struct MotivoDeSituacaoCadastral {
     pub id: i32,
     pub nome: String,
@@ -93,7 +99,7 @@ pub struct NewMotivoDeSituacaoCadastral<'a> {
 }
 
 
-#[derive(Queryable)]
+#[derive(Identifiable,Queryable, Serialize)]
 pub struct Municipio {
     pub id: i32,
     pub nome: String,
@@ -105,7 +111,9 @@ pub struct NewMunicipio<'a> {
     pub id: i32,
     pub nome: &'a str,
 }
-#[derive(Queryable, Serialize)]
+#[derive(Identifiable, Queryable, Associations, Serialize)]
+#[primary_key(cnpj_basico,cnpj_ordem,cnpj_dv)]
+#[belongs_to(Empresa, foreign_key="cnpj_basico")]
 pub struct Estabelecimento {
     pub cnpj_basico: String,
     pub cnpj_ordem: String,
