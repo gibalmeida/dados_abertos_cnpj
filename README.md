@@ -59,7 +59,7 @@ Nesta forma de importação você primeiro descompacta todos os arquivos que bai
 Para cada arquivo descompactado, para importar os dados para o banco de dados, você irá executar o comando da seguinte forma:
 
 ```bash
-cargo run TABELA < CAMINHO_DO_ARQUIVO_CSV
+cargo run --bin importer TABELA < CAMINHO_DO_ARQUIVO_CSV
 ```
 
 Onde:
@@ -87,7 +87,7 @@ Nesta forma de importação, a saída (_stdout_) do comando que descompacta  o a
 A sintaxe do comando de importação é praticamente a mesma da apresentada na forma de importação de arquivos descompactados. Segue o formato do comando:
 
 ```bash
-unzip -p CAMINHO_DO_ARQUIVO_CSV_COMPACTADO | cargo run TABELA
+unzip -p CAMINHO_DO_ARQUIVO_CSV_COMPACTADO | cargo run --bin importer TABELA
 ```
 
 Onde:
