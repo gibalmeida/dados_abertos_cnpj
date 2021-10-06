@@ -1,15 +1,19 @@
+use std::env;
+
+use dotenv::dotenv;
+
 #[macro_use] 
 extern crate rocket;
 
 use dados_abertos_cnpj::{error::CustomError, models::{CNAE, Empresa, Estabelecimento, MotivoDeSituacaoCadastral, Municipio, NaturezaJuridica, Pais, QualificacaoDeSocio}};
 use dados_abertos_cnpj::schema::{empresas, estabelecimentos, cnaes, paises, municipios, naturezas_juridicas, motivos_de_situacoes_cadastrais, qualificacoes_de_socios};
 use diesel::prelude::*;
-use rocket::serde::{Serialize, json::Json};
+use rocket::{figment::{map, value::{Map, Value}}, serde::{Serialize, json::Json}};
 
 use rocket_sync_db_pools::database;
 
 #[database("cnpj_db")]
-struct CnpjDbConn(diesel::MysqlConnection);
+struct DBPool(diesel::MysqlConnection);
 
 
 #[derive(Serialize)]
@@ -20,7 +24,7 @@ struct EmpresaResult {
 }
 
 #[get("/empresas/<cnpjbas>", format = "json")] // cnpjbas = CNPJ Básico, ou seja, os 8 primeiros digitos do CNPJ
-async fn get_empresas(conn: CnpjDbConn, cnpjbas: String) -> Result<Json<EmpresaResult>, CustomError> {
+async fn get_empresas(conn: DBPool, cnpjbas: String) -> Result<Json<EmpresaResult>, CustomError> {
 
     let query_result = conn
         .run(move |c| {
@@ -64,7 +68,7 @@ struct EstabelecimentoResult {
 }
 
 #[get("/estabelecimentos/<cnpj_completo>", format = "json")]
-async fn get_estabelecimentos(conn: CnpjDbConn, cnpj_completo: String) -> Result<Json<EstabelecimentoResult>, CustomError> {
+async fn get_estabelecimentos(conn: DBPool, cnpj_completo: String) -> Result<Json<EstabelecimentoResult>, CustomError> {
 
     let query_result = conn
         .run(move |c| {
@@ -133,7 +137,18 @@ async fn get_estabelecimentos(conn: CnpjDbConn, cnpj_completo: String) -> Result
 
 #[launch]
 fn rocket() -> _ {
-    rocket::build()
-        .attach(CnpjDbConn::fairing())
+
+    dotenv().ok();
+
+    let db_url = env::var("DATABASE_URL").unwrap();
+    let db: Map<_, Value> = map! {
+        "url" => db_url.into(),
+        "pool_size" => 10.into()
+    };
+
+    let figment = rocket::Config::figment().merge(("databases", map!["cnpj_db" => db]));
+
+    rocket::custom(figment)
         .mount("/api", routes![get_empresas,get_estabelecimentos])
+        .attach(DBPool::fairing())
 }

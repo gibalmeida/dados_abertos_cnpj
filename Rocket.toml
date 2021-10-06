@@ -1,2 +1,0 @@
-[global.databases]
-cnpj_db = { url = "mysql://root:password@127.0.0.1/cnpj" }
