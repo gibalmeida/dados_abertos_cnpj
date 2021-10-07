@@ -15,6 +15,30 @@ use rocket_sync_db_pools::database;
 #[database("cnpj_db")]
 struct DBPool(diesel::MysqlConnection);
 
+#[derive(Serialize)]
+struct CnaeResult {
+    cnae: CNAE,
+}
+
+#[get("/cnaes/<cnae_num>", format = "json")] 
+async fn get_cnaes(conn: DBPool, cnae_num: i32) -> Result<Json<CnaeResult>, CustomError> {
+
+    let cnae = conn
+        .run(move |c| {
+            cnaes::table
+                .filter(cnaes::id.eq(cnae_num))
+                .first::<CNAE>(c)
+        })
+        .await?;
+    
+    Ok(
+        Json(
+            CnaeResult {
+                cnae,
+            }
+        )
+    )
+}
 
 #[derive(Serialize)]
 struct EmpresaResult {
@@ -162,6 +186,10 @@ fn rocket() -> _ {
     let figment = rocket::Config::figment().merge(("databases", map!["cnpj_db" => db]));
 
     rocket::custom(figment)
-        .mount("/api", routes![get_empresas,get_estabelecimentos])
+        .mount("/api", routes![
+            get_cnaes,
+            get_empresas,
+            get_estabelecimentos
+        ])
         .attach(DBPool::fairing())
 }
