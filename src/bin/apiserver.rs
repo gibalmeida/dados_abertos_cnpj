@@ -60,15 +60,14 @@ struct EstabelecimentoResult {
     pais: Option<Pais>,
     municipio: Option<Municipio>,
     cnae_fiscal_principal: Option<CNAE>,
-    // cnae_fiscal_secundaria: Vec<CNAE>,
-    cnaes_fiscais_secundarias: Vec<i32>,
+    cnaes_fiscais_secundarias: Option<Vec<CNAE>>,
     empresa: Option<Empresa>,
     natureza_juridica: Option<NaturezaJuridica>,
     qualificacao_do_responsavel: Option<QualificacaoDeSocio>,
 }
 
-#[get("/estabelecimentos/<cnpj_completo>", format = "json")]
-async fn get_estabelecimentos(conn: DBPool, cnpj_completo: String) -> Result<Json<EstabelecimentoResult>, CustomError> {
+#[get("/estabelecimentos/<com_cnaes_secundarias>/<cnpj_completo>", format = "json")]
+async fn get_estabelecimentos(conn: DBPool, cnpj_completo: String, com_cnaes_secundarias: bool) -> Result<Json<EstabelecimentoResult>, CustomError> {
 
     let query_result = conn
         .run(move |c| {
@@ -107,32 +106,46 @@ async fn get_estabelecimentos(conn: DBPool, cnpj_completo: String) -> Result<Jso
         qualificacao_do_responsavel,
     ) = query_result;
 
-    let cnaes_fiscais_secundarias: Vec<i32> = match &estabelecimento.cnae_fiscal_secundaria {
-        Some(v) => v.to_string().split(",").map(|s| s.parse().unwrap()).collect(),
-        _ => vec![]
-    };
+    if com_cnaes_secundarias {
+            let cnaes_fiscais_secundarias: Vec<i32> = match &estabelecimento.cnae_fiscal_secundaria {
+                Some(v) => v.to_string().split(",").map(|s| s.parse().unwrap()).collect(),
+                _ => vec![]
+            };
+           
+            let cnaes_fiscais_secundarias = conn
+                .run(|c| {
+                    cnaes::table
+                        .filter(cnaes::id.eq_any(cnaes_fiscais_secundarias))
+                        .load::<CNAE>(c)
+                })
+                .await?;
+        
+            Ok(Json(EstabelecimentoResult{
+                estabelecimento,
+                motivo_situacao_cadastral,
+                pais,
+                municipio,
+                cnae_fiscal_principal,
+                cnaes_fiscais_secundarias: Some(cnaes_fiscais_secundarias),
+                empresa,
+                natureza_juridica,
+                qualificacao_do_responsavel,
+            }))            
 
-    //let cnaes_secundarios = vec!["aaa","bbb"];
+        } else {
+            Ok(Json(EstabelecimentoResult{
+                estabelecimento,
+                motivo_situacao_cadastral,
+                pais,
+                municipio,
+                cnae_fiscal_principal,
+                cnaes_fiscais_secundarias: None,
+                empresa,
+                natureza_juridica,
+                qualificacao_do_responsavel,
+            }))
+        }
     
-    // let result_query2 = conn
-    //     .run(|c| {
-    //         cnaes::table
-    //             .filter(cnaes::id.eq(cnaes_secundarios))
-    //             .load::<Vec<CNAE>>(c)
-    //     })
-    //     .await?;
-
-    Ok(Json(EstabelecimentoResult{
-        estabelecimento,
-        motivo_situacao_cadastral,
-        pais,
-        municipio,
-        cnae_fiscal_principal,
-        cnaes_fiscais_secundarias,
-        empresa,
-        natureza_juridica,
-        qualificacao_do_responsavel,
-    }))
 }
 
 #[launch]
