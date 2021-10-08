@@ -45,7 +45,7 @@ struct EstabelecimentoCsvRecord<'a> {
     identificador_matriz_filial: String,
     #[serde(with = "serde_bytes")]
     nome_fantasia: &'a [u8],
-    situacao_cadastral: Option<String>,
+    situacao_cadastral: i8,
     data_situacao_cadastral: Option<String>,
     motivo_situacao_cadastral: Option<i32>,
     #[serde(with = "serde_bytes")]
