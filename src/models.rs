@@ -18,14 +18,14 @@ pub struct Empresa {
 
 #[derive(Debug,Insertable)]
 #[table_name="empresas"]
-pub struct NewEmpresa<'a> {
-    pub cnpj_basico: &'a str,
-    pub razao_social: &'a str,
+pub struct NewEmpresa {
+    pub cnpj_basico: String,
+    pub razao_social: String,
     pub natureza_juridica: Option<i32>,
     pub qualificacao_do_responsavel: Option<i32>,
     pub capital_social: Option<BigDecimal>,
-    pub porte: Option<&'a str>,
-    pub ente_federativo_responsavel: Option<&'a str>
+    pub porte: Option<String>,
+    pub ente_federativo_responsavel: Option<String>
 }
 
 #[derive(Identifiable,Queryable, Serialize)]
@@ -149,11 +149,11 @@ pub struct Estabelecimento {
 
 #[derive(Debug,Insertable)]
 #[table_name="estabelecimentos"]
-pub struct NewEstabelecimento<'a> {
-    pub cnpj_basico: &'a str,
-    pub cnpj_ordem: &'a str,
-    pub cnpj_dv: &'a str,
-    pub identificador_matriz_filial: &'a str,
+pub struct NewEstabelecimento {
+    pub cnpj_basico: String,
+    pub cnpj_ordem: String,
+    pub cnpj_dv: String,
+    pub identificador_matriz_filial: String,
     pub nome_fantasia: Option<String>,
     pub situacao_cadastral: i8,
     pub data_situacao_cadastral: Option<NaiveDate>,

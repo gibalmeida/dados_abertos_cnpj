@@ -13,6 +13,9 @@ impl Database {
     pub fn new() -> Database {
         let db_connection = Self::establish_connection();
 
+        //Aumenta o tamanho máximo dos pacotes para 1Gb (Não dá para ir além de 1Gb, pois o MySQL não aceita!)
+        sql_query("SET GLOBAL max_allowed_packet=1073741824").execute(&db_connection).expect("Erro ao executar ao aumentar o tamanho máximo do pacote.");
+
         // Desativa o autocommit, checagens de chaves estrangeiras e checagens de chaves únicas (unique)
         // para dar mais performance nas gravações do banco de dados (vide: https://dev.mysql.com/doc/refman/8.0/en/optimizing-innodb-bulk-data-loading.html)
         sql_query("SET autocommit=0").execute(&db_connection).expect("Erro ao desativar o autocommit!");
@@ -32,18 +35,18 @@ impl Database {
         sql_query("SET unique_checks=1").execute(&self.db_connection).expect("Erro ao ativar novamente checagens de chaves únicas!");        
     }
 
-    pub fn upsert_empresa(&self, new_empresa: &NewEmpresa ) -> QueryResult<usize> {
+    pub fn insert_empresa(&self, new_empresa: &Vec<NewEmpresa> ) -> QueryResult<usize> {
         use crate::schema::empresas;
     
-        diesel::replace_into(empresas::table)
+        diesel::insert_into(empresas::table)
             .values(new_empresa)
             .execute(&self.db_connection)
     }
 
-    pub fn upsert_estabelecimento(&self, new_estabelecimento: &NewEstabelecimento ) -> QueryResult<usize> {
+    pub fn insert_estabelecimento(&self, new_estabelecimento: &Vec<NewEstabelecimento> ) -> QueryResult<usize> {
         use crate::schema::estabelecimentos;
     
-        diesel::replace_into(estabelecimentos::table)
+        diesel::insert_into(estabelecimentos::table)
             .values(new_estabelecimento)
             .execute(&self.db_connection)
     }

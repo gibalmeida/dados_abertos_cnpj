@@ -151,35 +151,49 @@ impl Import {
     fn import_empresas(&self, mut rdr: Reader<Stdin>) -> Result<(), Box<dyn Error>> {
         let mut raw_record = csv::ByteRecord::new();
 
+        const RECORDS_LIMIT: usize = 1000;
+        let mut records: Vec<NewEmpresa> = Vec::with_capacity(RECORDS_LIMIT);
+
         while rdr.read_byte_record(&mut raw_record)? {
 
             let record: EmpresaCsvRecord = raw_record.deserialize(None)
                 .expect(&format!("Erro ao deserializar o seguinte registro: {:?}", raw_record));
             let razao_social = ISO_8859_15.decode(record.razao_social, DecoderTrap::Strict)?;
             let ente_federativo_responsavel = ISO_8859_15.decode(record.ente_federativo_responsavel, DecoderTrap::Strict)?;
-            let porte_da_empresa = match std::str::from_utf8(&record.porte_da_empresa) {
-                Ok(v) => v,
-                Err(_e) => "ER",
+            let porte_da_empresa = match std::str::from_utf8(record.porte_da_empresa) {
+                Ok(v) => v.to_string(),
+                Err(_e) => "ER".to_string(),
             };
 
-            let tbl_record = NewEmpresa {
-                cnpj_basico: &record.cnpj_basico,
-                razao_social: &razao_social,
+            records.push(NewEmpresa {
+                cnpj_basico: record.cnpj_basico,
+                razao_social,
                 natureza_juridica: Some(record.natureza_juridica),
                 qualificacao_do_responsavel: Some(record.qualificacao_do_responsavel),
                 capital_social: Some(BigDecimal::from_str(&record.capital_social_da_empresa.replacen(",",".",1)).unwrap()), // arrumar a conversão aqui
-                porte: Some(&porte_da_empresa),
-                ente_federativo_responsavel: Some(&ente_federativo_responsavel)
-            };
-            self.db.upsert_empresa(&tbl_record)
-                .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
+                porte: Some(porte_da_empresa),
+                ente_federativo_responsavel: Some(ente_federativo_responsavel)
+            });
+
+            if records.len() == RECORDS_LIMIT {
+                self.db.insert_empresa(&records)
+                    .expect(&format!("Erro ao inserir registros na tabela de empresas!"));
+                records.clear();
+            }
+            // self.db.upsert_empresa(&tbl_record)
+            //     .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
         }
+        self.db.insert_empresa(&records)
+            .expect(&format!("Erro ao inserir registros na tabela de empresas!"));
         self.db.commit();
         Ok(())
     }
 
     fn import_estabelecimentos(&self, mut rdr: Reader<Stdin>) -> Result<(), Box<dyn Error>> {
         let mut raw_record = csv::ByteRecord::new();
+
+        const RECORDS_LIMIT: usize = 1000;
+        let mut records: Vec<NewEstabelecimento> = Vec::with_capacity(RECORDS_LIMIT);
 
         while rdr.read_byte_record(&mut raw_record)? {
 
@@ -194,11 +208,11 @@ impl Import {
             let numero = Some(ISO_8859_15.decode(record.numero, DecoderTrap::Strict).unwrap());
             let correio_eletronico = Some(ISO_8859_15.decode(record.correio_eletronico, DecoderTrap::Strict).unwrap());
 
-            let tbl_record = NewEstabelecimento {
-                cnpj_basico: &record.cnpj_basico,
-                cnpj_ordem: &record.cnpj_ordem,
-                cnpj_dv: &record.cnpj_dv,
-                identificador_matriz_filial: &record.identificador_matriz_filial,
+            records.push( NewEstabelecimento {
+                cnpj_basico: record.cnpj_basico,
+                cnpj_ordem: record.cnpj_ordem,
+                cnpj_dv: record.cnpj_dv,
+                identificador_matriz_filial: record.identificador_matriz_filial,
                 nome_fantasia: nome_fantasia,
                 situacao_cadastral: record.situacao_cadastral,
                 data_situacao_cadastral: naive_date_from_str(record.data_situacao_cadastral),
@@ -226,10 +240,21 @@ impl Import {
                 situacao_especial: record.situacao_especial,
                 data_situacao_especial: naive_date_from_str(record.data_situacao_especial)
 
-            };
-            self.db.upsert_estabelecimento(&tbl_record)
-                .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
+            });
+
+            if records.len() == RECORDS_LIMIT {
+                self.db.insert_estabelecimento(&records)
+                    .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
+                records.clear();
+            }
+
+            //self.db.upsert_estabelecimento(&tbl_record)
+            //    .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&tbl_record));
         }
+
+        self.db.insert_estabelecimento(&records)
+                    .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
+
         self.db.commit();
         Ok(())
     }    
