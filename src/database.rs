@@ -14,7 +14,7 @@ impl Database {
         let db_connection = Self::establish_connection();
 
         //Aumenta o tamanho máximo dos pacotes para 1Gb (Não dá para ir além de 1Gb, pois o MySQL não aceita!)
-        sql_query("SET GLOBAL max_allowed_packet=1073741824").execute(&db_connection).expect("Erro ao executar ao aumentar o tamanho máximo do pacote.");
+        // sql_query("SET GLOBAL max_allowed_packet=1073741824").execute(&db_connection).expect("Erro ao executar ao aumentar o tamanho máximo do pacote.");
 
         // Desativa o autocommit, checagens de chaves estrangeiras e checagens de chaves únicas (unique)
         // para dar mais performance nas gravações do banco de dados (vide: https://dev.mysql.com/doc/refman/8.0/en/optimizing-innodb-bulk-data-loading.html)
@@ -32,7 +32,7 @@ impl Database {
         // Faz o COMMIT para gravar os registros no banco de dados
         sql_query("COMMIT").execute(&self.db_connection).expect("Erro ao executar o commit!");
         sql_query("SET foreign_key_checks = 1").execute(&self.db_connection).expect("Erro ao ativar novamente checagens de chaves estrangeiras!");
-        sql_query("SET unique_checks=1").execute(&self.db_connection).expect("Erro ao ativar novamente checagens de chaves únicas!");        
+        sql_query("SET unique_checks=1").execute(&self.db_connection).expect("Erro ao ativar novamente checagens de chaves únicas!");  
     }
 
     pub fn insert_empresa(&self, new_empresa: &Vec<NewEmpresa> ) -> QueryResult<usize> {

@@ -21,7 +21,7 @@ struct CnaeResult {
 }
 
 #[get("/cnaes/<cnae_num>", format = "json")] 
-async fn get_cnaes(conn: DBPool, cnae_num: i32) -> Result<Json<CnaeResult>, CustomError> {
+async fn get_cnaes(conn: DBPool, cnae_num: u32) -> Result<Json<CnaeResult>, CustomError> {
 
     let cnae = conn
         .run(move |c| {
@@ -131,7 +131,7 @@ async fn get_estabelecimentos(conn: DBPool, cnpj_completo: String, com_cnaes_sec
     ) = query_result;
 
     if com_cnaes_secundarias {
-            let cnaes_fiscais_secundarias: Vec<i32> = match &estabelecimento.cnae_fiscal_secundaria {
+            let cnaes_fiscais_secundarias: Vec<u32> = match &estabelecimento.cnae_fiscal_secundaria {
                 Some(v) => v.to_string().split(",").map(|s| s.parse().unwrap()).collect(),
                 _ => vec![]
             };
