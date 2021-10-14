@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use crate::types::TipoDeArquivo;
+use crate::tipo_de_arquivo::TipoDeArquivo;
 
 pub struct Config {
     tipo_de_arquivo: TipoDeArquivo,
@@ -23,3 +23,4 @@ impl Config {
         &self.tipo_de_arquivo
     }
 }
+

@@ -1,16 +1,17 @@
 use std::env;
-
 use dotenv::dotenv;
 
 #[macro_use] 
 extern crate rocket;
 
-use dados_abertos_cnpj::{error::CustomError, models::{CNAE, Empresa, Estabelecimento, MotivoDeSituacaoCadastral, Municipio, NaturezaJuridica, Pais, QualificacaoDeSocio}};
-use dados_abertos_cnpj::schema::{empresas, estabelecimentos, cnaes, paises, municipios, naturezas_juridicas, motivos_de_situacoes_cadastrais, qualificacoes_de_socios};
+use data_models::{ models::{CNAE, Empresa, Estabelecimento, MotivoDeSituacaoCadastral, Municipio, NaturezaJuridica, Pais, QualificacaoDeSocio}};
+use data_models::schema::{empresas, estabelecimentos, cnaes, paises, municipios, naturezas_juridicas, motivos_de_situacoes_cadastrais, qualificacoes_de_socios};
 use diesel::prelude::*;
 use rocket::{figment::{map, value::{Map, Value}}, serde::{Serialize, json::Json}};
 
 use rocket_sync_db_pools::database;
+
+use rest_server::CustomError;
 
 #[database("cnpj_db")]
 struct DBPool(diesel::MysqlConnection);

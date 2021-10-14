@@ -1,0 +1,22 @@
+[package]
+name = "rest-server"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+data_models = { path="../data_models"}
+serde = { version = "1.0", features = ["derive"] }
+serde_derive = "1"
+diesel = { version = "1.4.8", features = ["mysql","numeric","chrono"] }
+dotenv = "0.15.0"
+bigdecimal = { version = "0.1", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+rocket = { version = "0.5.0-rc.1", features = ["json"] }
+failure = "0.1.8"
+
+[dependencies.rocket_sync_db_pools]
+version = "0.1.0-rc.1"
+default-features = false
+features = ["diesel_mysql_pool"]

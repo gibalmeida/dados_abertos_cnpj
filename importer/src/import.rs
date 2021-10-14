@@ -7,16 +7,16 @@ use std::io;
 
 use csv::Reader;
 
-use chrono::{NaiveDate};
+use chrono::NaiveDate;
 use encoding::{Encoding, DecoderTrap};
 use encoding::all::ISO_8859_15;
 use serde_derive::Deserialize;
-use bigdecimal::{BigDecimal};
+use bigdecimal::BigDecimal;
 
-use crate::types::TipoDeArquivo;
+use crate::tipo_de_arquivo::TipoDeArquivo;
 use crate::config::Config;
-use crate::database::Database;
-use crate::models::*;
+use data_models::database::Database;
+use data_models::models::*;
 
 
 
