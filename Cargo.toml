@@ -2,5 +2,6 @@
 members = [
     "data_models",
     "importer",
-    "rest-server"
+    "rest-server",
+    "graphql-server"
 ]
