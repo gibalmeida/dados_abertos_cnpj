@@ -414,6 +414,15 @@ impl Estabelecimento {
     pub fn data_situacao_especial(&self) -> &Option<NaiveDate> {
         &self.data_situacao_especial
     }
+
+    pub fn empresa(&self, context: &Context) -> Result<Empresa, FieldError> {
+        use data_models::schema::empresas;
+        let connection = context.pool.clone().get()?;
+
+        Ok(empresas::table
+            .filter(empresas::cnpj_basico.eq(&self.cnpj_basico))
+            .first::<Empresa>(&*connection)?)
+    }
 }
 
 #[derive(GraphQLEnum)]
