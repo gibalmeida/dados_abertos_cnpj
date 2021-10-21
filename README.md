@@ -1,10 +1,14 @@
 # Dados Públicos CNPJ
 
-Este projeto foi criado com o objetivo de importar para um banco de dados (MySQL) os arquivos (CSV) com os dados públicos dos cadastros de CNPJ que são disponibilizados pela Receita Federal do Brasil, e, futuramente, exportar estes dados por meio de uma API (REST).
+Este projeto foi criado com o objetivo de importar para um banco de dados (MySQL) os arquivos (CSV) com os dados públicos dos cadastros de CNPJ que são disponibilizados pela Receita Federal do Brasil, e, futuramente, exportar estes dados por meio de uma API (REST e GraphQL).
 
 Abaixo você encontrará as instruções com os passos preparativos para a importação dos dados e como fazer para importá-los para o banco de dados. Os comandos mostrados abaixo assumem que você estará utilizando uma distribuição do Sistema Operacional Linux (no momento do desenvolvimento deste projeto eu estava utilizando a Distro Ubuntu 20.04); então se você estiver utilizando outro S.O.(Windows ou MacOS X) talvez você precisará adaptar alguns comandos (ai é com você).
 
->Nota: Este é o meu primeiro projeto em Rust, então o código não está bem estruturado... ainda.
+>Nota: Como este é o meu primeiro projeto em Rust, desculpe ai se o código não está tão bonito. De qualquer forma, ele funciona.
+
+## Docker
+
+Se quiser apenar utilizar os binários deste projeto em contêineres do Docker, veja o repositório [https://github.com/gibalmeida/dados_abertos_cnpj-docker]. Lá tem dois contêineres: um que faz o Mirroring dos arquivos da Receita e um outro para o serviço de GraphQL.
 
 ## Preparativos para a importação dos arquivos
 
@@ -48,50 +52,14 @@ diesel migration run
 
 ## Importação dos dados
 
-A seguir são apresentado duas formas de executar o comando para a importação dos dados: com os arquivos CSVs descompactados em uma pasta; ou sem descompactá-los na pasta.
+A importação dos dados a partir dos arquivos CSV compactados em formato ZIP é bem simples. Para cada arquivo .zip basta executar o comando _importer_ com o caminho do arquivo como parâmetro, conforme o formato abaixo:
 
->Antes de executar os comandos abaixo no seu terminal, você deve ir (`cd`) para  está dentro da pasta `dados_abertos_cnpj` (pasta do projeto). Ex: `cd /meusprojetos/dados_abertos_cnpj`
+>Antes de executar o comando abaixo no seu terminal, você deve ir (`cd`) para  está dentro da pasta `dados_abertos_cnpj` (pasta do projeto). Ex: `cd /meusprojetos/dados_abertos_cnpj`
 
-### 1. Arquivos descompactados
 
-Nesta forma de importação você primeiro descompacta todos os arquivos que baixou da RF utilizando o seu descompactador de arquivos ZIP preferido. (No Linux eu utilizo o `unzip`.)
-
-Para cada arquivo descompactado, para importar os dados para o banco de dados, você irá executar o comando da seguinte forma:
 
 ```bash
-cargo run --bin importer TABELA < CAMINHO_DO_ARQUIVO_CSV
+cargo run --bin importer CAMINHO_DO_ARQUIVO_CSV_COMPACTADO
 ```
 
-Onde:
-
-- __TABELA__ deverá ser substituído por uma das seguintes tabelas abaixo, conforme a terminação do nome do arquivo (indicado entre parentes) que será processado pelo comando:
-
-  - empresas (.EMPRECSV)
-  - estabelecimentos (.ESTABELE)
-  - paises (.PAISCSV)
-  - municipios (.MUNICCSV)
-  - naturezas_juridicas (.NATJUCSV)
-  - cnaes (.CNAECSV)
-  - qualificacoes_de_socios (QUALSCSV)
-  - motivos_de_situacoes_cadastrais (.MOTICSV)
-  - simples (.SIMPLES.CSV) (ainda não implementado)
-  - socioes (.???) (ainda não implementado)
-
-- __CAMINHO_DO_ARQUIVO_CSV__ deverá ser substituído pelo caminho completo do arquivo descompactado que será processado pelo comando (ex: `/home/user/Downloads/K3241.K03200Y0.D10911.ESTABELE`).
-
-### 2. Arquivos compactados
-
-Nesta forma de importação, a saída (_stdout_) do comando que descompacta  o arquivo (`unzip`) envia os dados descompactados, via _pipe_ (|), para a entrada (_stdin_) do comando que faz a importação. Portanto, não há necessidade de espaço em disco para salvar o arquivo descompactado, já que é feito tudo em um único passo.
-> Caso o seu Linux não possua o comando `unzip` intalado, você precisará instalar ele antes de utilizar no comando abaixo.
-
-A sintaxe do comando de importação é praticamente a mesma da apresentada na forma de importação de arquivos descompactados. Segue o formato do comando:
-
-```bash
-unzip -p CAMINHO_DO_ARQUIVO_CSV_COMPACTADO | cargo run --bin importer TABELA
-```
-
-Onde:
-
-- __TABELA__  ídem a apresentada na forma dos arquivos descompactados
-
-- __CAMINHO_DO_ARQUIVO_CSV_COMPACTADO__  deverá ser substituído pelo caminho completo do arquivo compactado que será processado pelo comando (ex: `/home/user/Downloads/K3241.K03200Y0.D10911.ESTABELE.zip`).
+Onde __CAMINHO_DO_ARQUIVO_CSV_COMPACTADO__  deverá ser substituído pelo caminho completo do arquivo compactado que será processado pelo comando (ex: `/home/user/Downloads/K3241.K03200Y0.D10911.ESTABELE.zip`).

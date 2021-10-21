@@ -1,9 +1,7 @@
 
-use std::process;
-use std::error::Error;
-use std::io::Stdin;
-use std::str::FromStr;
 use std::io;
+use std::error::Error;
+use std::str::FromStr;
 
 use csv::Reader;
 
@@ -118,12 +116,12 @@ impl Import {
         Import { config, db }
     }
 
-    pub fn run(&self) {
+    pub fn run<R>(&self, file: R) -> Result<(), String> where R: io::Read, {
     
         let rdr = csv::ReaderBuilder::new()
             .delimiter(b';')
             .has_headers(false)
-            .from_reader(io::stdin());
+            .from_reader(file);
     
         let processing_result = match self.config.tipo_de_arquivo() {
             TipoDeArquivo::Empresas => self.import_empresas(rdr),
@@ -133,23 +131,24 @@ impl Import {
             TipoDeArquivo::QualificacoesDeSocios => self.import_qualificacoes_de_socios(rdr),
             TipoDeArquivo::Paises => self.import_paises(rdr),
             TipoDeArquivo::Municipios => self.import_municipios(rdr),
-            TipoDeArquivo::MotivosDeSituacoesCadastrais => self.import_motivos_de_situacoes_cadastrais(rdr)
+            TipoDeArquivo::MotivosDeSituacoesCadastrais => self.import_motivos_de_situacoes_cadastrais(rdr),
+            TipoDeArquivo::Simples => todo!(),
+            TipoDeArquivo::Socios => todo!(),
         };
         
-        if let Err(err) = processing_result {
-            println!("Erro ao executar: {}", err);
-            process::exit(1);
-        } else {
-            println!("{} registros importados.", processing_result.unwrap());
-        };
+        match processing_result {
+            Ok(num_registros) => {
+                println!("{} registros importados.", num_registros);
+                self.db.commit();
+            },
+            Err(err) =>return Err(format!("Erro ao executar: {}", err))
+        } 
 
-
-
-        self.db.commit();
+        Ok(())
     }
 
 
-    fn import_empresas(&self, mut rdr: Reader<Stdin>) -> Result<usize, Box<dyn Error>> {
+    fn import_empresas<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
         let mut num_records = 0;
 
@@ -193,7 +192,7 @@ impl Import {
         Ok(num_records)
     }
 
-    fn import_estabelecimentos(&self, mut rdr: Reader<Stdin>) -> Result<usize, Box<dyn Error>> {
+    fn import_estabelecimentos<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
         let mut num_records = 0;
 
@@ -264,7 +263,7 @@ impl Import {
         Ok(num_records)
     }
     
-    fn import_cnaes(&self, mut rdr: Reader<Stdin>) -> Result<usize, Box<dyn Error>> {
+    fn import_cnaes<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
         let mut num_records = 0;
 
@@ -285,7 +284,7 @@ impl Import {
         Ok(num_records)
     }  
     
-    fn import_naturezas_juridicas(&self, mut rdr: Reader<Stdin>) -> Result<usize, Box<dyn Error>> {
+    fn import_naturezas_juridicas<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
         let mut num_records = 0;
 
@@ -306,7 +305,7 @@ impl Import {
         Ok(num_records)
     }
 
-    fn import_qualificacoes_de_socios(&self, mut rdr: Reader<Stdin>) -> Result<usize, Box<dyn Error>> {
+    fn import_qualificacoes_de_socios<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
         let mut num_records = 0;
 
@@ -327,7 +326,7 @@ impl Import {
         Ok(num_records)
     }
 
-    fn import_paises(&self, mut rdr: Reader<Stdin>) -> Result<usize, Box<dyn Error>> {
+    fn import_paises<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
         let mut num_records = 0;
 
@@ -348,7 +347,7 @@ impl Import {
         Ok(num_records)
     }
     
-    fn import_municipios(&self, mut rdr: Reader<Stdin>) -> Result<usize, Box<dyn Error>> {
+    fn import_municipios<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
         let mut num_records = 0;
 
@@ -369,7 +368,7 @@ impl Import {
         Ok(num_records)
     }
 
-    fn import_motivos_de_situacoes_cadastrais(&self, mut rdr: Reader<Stdin>) -> Result<usize, Box<dyn Error>> {
+    fn import_motivos_de_situacoes_cadastrais<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
         let mut num_records = 0;
 
