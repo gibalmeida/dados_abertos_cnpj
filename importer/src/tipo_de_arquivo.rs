@@ -32,7 +32,7 @@ impl FromStr for TipoDeArquivo {
             return Ok(TipoDeArquivo::NaturezasJuridicas);
         } else if filename.contains(".PAISCSV") {
             return Ok(TipoDeArquivo::Paises);
-        } else if filename.contains(".QUALCSV") {
+        } else if filename.contains(".QUALSCSV") {
             return Ok(TipoDeArquivo::QualificacoesDeSocios);
         } else if filename.contains(".EMPRECSV") {
             return Ok(TipoDeArquivo::Empresas);
@@ -43,5 +43,22 @@ impl FromStr for TipoDeArquivo {
         }
         
         Err(())
+    }
+}
+
+impl TipoDeArquivo {
+    pub fn table_name(&self) -> &str {
+        match &self {
+            TipoDeArquivo::CNAES => "cnaes",
+            TipoDeArquivo::Empresas => "empresas",
+            TipoDeArquivo::Estabelecimentos => "estabelecimentos",
+            TipoDeArquivo::MotivosDeSituacoesCadastrais => "motivos_de_situacoes_cadastrais",
+            TipoDeArquivo::Municipios => "municipios",
+            TipoDeArquivo::NaturezasJuridicas => "naturezas_juridicas",
+            TipoDeArquivo::Paises => "paises",
+            TipoDeArquivo::QualificacoesDeSocios => "qualificacoes_de_socios",
+            TipoDeArquivo::Simples => "simples",
+            TipoDeArquivo::Socios => "socios",            
+        }
     }
 }

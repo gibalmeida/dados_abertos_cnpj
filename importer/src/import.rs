@@ -10,6 +10,7 @@ use encoding::{Encoding, DecoderTrap};
 use encoding::all::ISO_8859_15;
 use serde_derive::Deserialize;
 use bigdecimal::BigDecimal;
+use zip::read::ZipFile;
 
 use crate::tipo_de_arquivo::TipoDeArquivo;
 use crate::config::Config;
@@ -116,7 +117,9 @@ impl Import {
         Import { config, db }
     }
 
-    pub fn run<R>(&self, file: R) -> Result<(), String> where R: io::Read, {
+    pub fn run(&self, file: ZipFile) -> Result<(), String>  {
+
+        let filename = &*file.name().to_owned();
     
         let rdr = csv::ReaderBuilder::new()
             .delimiter(b';')
@@ -139,6 +142,17 @@ impl Import {
         match processing_result {
             Ok(num_registros) => {
                 println!("{} registros importados.", num_registros);
+
+                let arquivo_importado = NewArquivoImportado{
+                    nome_do_arquivo: filename,
+                    tabela: self.config.tipo_de_arquivo().table_name(),
+                    registros_processados: num_registros as u32,
+                };
+
+                self.db
+                    .upsert_arquivo_importado(&arquivo_importado)
+                    .expect(&format!("Erro ao inserir registros na tabela de arquivos importados!"));
+
                 self.db.commit();
             },
             Err(err) =>return Err(format!("Erro ao executar: {}", err))

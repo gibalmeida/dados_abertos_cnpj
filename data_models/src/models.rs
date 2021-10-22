@@ -1,8 +1,10 @@
+use std::time::SystemTime;
+
 use bigdecimal::BigDecimal;
 use chrono::NaiveDate;
 use serde::Serialize;
 
-use super::schema::{empresas, estabelecimentos, naturezas_juridicas, qualificacoes_de_socios, cnaes, paises, municipios, motivos_de_situacoes_cadastrais};
+use super::schema::{empresas,estabelecimentos,cnaes,naturezas_juridicas,municipios,paises,qualificacoes_de_socios,motivos_de_situacoes_cadastrais,arquivos_importados};
 
 #[derive(Identifiable, Queryable, Serialize)]
 #[primary_key(cnpj_basico)]
@@ -180,4 +182,21 @@ pub struct NewEstabelecimento {
     pub correio_eletronico: Option<String>,
     pub situacao_especial: Option<String>,
     pub data_situacao_especial: Option<NaiveDate>,    
+}
+
+#[derive(Queryable)]
+pub struct ArquivoImportado {
+    pub nome_do_arquivo: String,
+    pub tabela: String,
+    pub registros_processados: u32,
+    pub created_at: SystemTime,
+}
+
+
+#[derive(Insertable)]
+#[table_name="arquivos_importados"]
+pub struct NewArquivoImportado<'a> {
+    pub nome_do_arquivo: &'a str,
+    pub tabela: &'a str,
+    pub registros_processados: u32,
 }

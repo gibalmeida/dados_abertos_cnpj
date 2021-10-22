@@ -1,4 +1,13 @@
 table! {
+    arquivos_importados (nome_do_arquivo) {
+        nome_do_arquivo -> Varchar,
+        tabela -> Varchar,
+        registros_processados -> Unsigned<Integer>,
+        created_at -> Nullable<Timestamp>,
+    }
+}
+
+table! {
     cnaes (id) {
         id -> Unsigned<Integer>,
         nome -> Varchar,
@@ -104,6 +113,7 @@ joinable!(estabelecimentos -> paises (pais));
 joinable!(estabelecimentos -> situacoes_cadastrais (situacao_cadastral));
 
 allow_tables_to_appear_in_same_query!(
+    arquivos_importados,
     cnaes,
     empresas,
     estabelecimentos,
