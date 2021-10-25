@@ -193,14 +193,14 @@ impl Import {
             num_records+=1;
 
             if records.len() == RECORDS_LIMIT {
-                self.db.insert_empresa(&records)
+                self.db.upsert_empresa(&records)
                     .expect(&format!("Erro ao inserir registros na tabela de empresas!"));
                 records.clear();
                 println!("{} registros importados até agora.", &num_records);
             }
 
         }
-        self.db.insert_empresa(&records)
+        self.db.upsert_empresa(&records)
             .expect(&format!("Erro ao inserir registros na tabela de empresas!"));
 
         Ok(num_records)
@@ -263,7 +263,7 @@ impl Import {
             num_records += 1;
 
             if records.len() == RECORDS_LIMIT {
-                self.db.insert_estabelecimento(&records)
+                self.db.upsert_estabelecimento(&records)
                     .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
                 records.clear();
                 println!("{} registros importados até agora.", &num_records);
@@ -271,7 +271,7 @@ impl Import {
 
         }
 
-        self.db.insert_estabelecimento(&records)
+        self.db.upsert_estabelecimento(&records)
                     .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
 
         Ok(num_records)

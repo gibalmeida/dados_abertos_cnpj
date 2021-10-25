@@ -44,7 +44,7 @@ impl Database {
             .expect("Erro ao ativar novamente checagens de chaves únicas!");
     }
 
-    pub fn insert_empresa(&self, new_empresa: &Vec<NewEmpresa>) -> QueryResult<usize> {
+    pub fn upsert_empresa(&self, new_empresa: &Vec<NewEmpresa>) -> QueryResult<usize> {
         use crate::schema::empresas;
 
         diesel::replace_into(empresas::table)
@@ -52,13 +52,13 @@ impl Database {
             .execute(&self.db_connection)
     }
 
-    pub fn insert_estabelecimento(
+    pub fn upsert_estabelecimento(
         &self,
         new_estabelecimento: &Vec<NewEstabelecimento>,
     ) -> QueryResult<usize> {
         use crate::schema::estabelecimentos;
 
-        diesel::insert_into(estabelecimentos::table)
+        diesel::replace_into(estabelecimentos::table)
             .values(new_estabelecimento)
             .execute(&self.db_connection)
     }
