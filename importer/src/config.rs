@@ -1,16 +1,17 @@
 use std::str::FromStr;
 use crate::tipo_de_arquivo::TipoDeArquivo;
+use crate::cli::Cli;
 
-pub struct Config {
+pub struct Config<'a> {
     tipo_de_arquivo: TipoDeArquivo,
-    records_limit: usize,
+    args: &'a Cli,
 }
 
-impl Config {
-    pub fn new(filename: &str, records_limit: usize) -> Result<Config, &'static str> {
+impl<'a> Config<'a> {
+    pub fn new(filename: &str, args: &'a Cli) -> Result<Config<'a>, &'static str> {
 
         match TipoDeArquivo::from_str(&filename) {
-            Ok(v) => Ok(Config{tipo_de_arquivo: v, records_limit}),
+            Ok(v) => Ok(Config{tipo_de_arquivo: v, args}),
             Err(_) => Err("Tipo de arquivo inválido!")
         }
     }
@@ -18,8 +19,11 @@ impl Config {
     pub fn tipo_de_arquivo(&self) -> &TipoDeArquivo {
         &self.tipo_de_arquivo
     }
-    pub fn records_limit(&self) -> usize {
-        self.records_limit
+    pub fn rows_per_insert(&self) -> usize {
+        self.args.rows_per_insert
+    }
+    pub fn verbose(&self) -> bool {
+        self.args.verbose
     }
 }
 

@@ -104,12 +104,12 @@ fn naive_date_from_str(date_option: Option<String>) -> Option<NaiveDate> {
     }
 
 }
-pub struct Import {
-    config: Config,
+pub struct Import<'a> {
+    config: Config<'a>,
     db: Database
 }
 
-impl Import {
+impl<'a> Import<'a> {
     pub fn new(config: Config) -> Import {
 
         let db = Database::new();
@@ -166,7 +166,8 @@ impl Import {
         let mut raw_record = csv::ByteRecord::new();
         let mut num_records = 0;
 
-        let mut records: Vec<NewEmpresa> = Vec::with_capacity(self.config.records_limit());
+        let mut records: Vec<NewEmpresa> = Vec::with_capacity(self.config.rows_per_insert());
+        self.db.disable_keys("empresas");
 
         while rdr.read_byte_record(&mut raw_record)? {
 
@@ -191,16 +192,19 @@ impl Import {
 
             num_records+=1;
 
-            if records.len() == self.config.records_limit() {
+            if records.len() == self.config.rows_per_insert() {
                 self.db.upsert_empresa(&records)
                     .expect(&format!("Erro ao inserir registros na tabela de empresas!"));
                 records.clear();
-                println!("{} registros importados até agora.", &num_records);
+                if self.config.verbose() {
+                    println!("{} registros importados até agora.", &num_records);
+                }
             }
 
         }
         self.db.upsert_empresa(&records)
             .expect(&format!("Erro ao inserir registros na tabela de empresas!"));
+        self.db.enable_keys("empresas");
 
         Ok(num_records)
     }
@@ -209,7 +213,7 @@ impl Import {
         let mut raw_record = csv::ByteRecord::new();
         let mut num_records = 0;
 
-        let mut records: Vec<NewEstabelecimento> = Vec::with_capacity(self.config.records_limit());
+        let mut records: Vec<NewEstabelecimento> = Vec::with_capacity(self.config.rows_per_insert());
 
         while rdr.read_byte_record(&mut raw_record)? {
 
@@ -260,11 +264,13 @@ impl Import {
 
             num_records += 1;
 
-            if records.len() == self.config.records_limit() {
+            if records.len() == self.config.rows_per_insert() {
                 self.db.upsert_estabelecimento(&records)
                     .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
                 records.clear();
-                println!("{} registros importados até agora.", &num_records);
+                if self.config.verbose() {
+                    println!("{} registros importados até agora.", &num_records);
+                }
             }
 
         }
