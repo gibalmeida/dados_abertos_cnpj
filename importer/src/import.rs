@@ -1,5 +1,5 @@
 
-use std::io;
+use std::io::{self, Write};
 use std::error::Error;
 use std::str::FromStr;
 
@@ -167,7 +167,9 @@ impl<'a> Import<'a> {
         let mut num_records = 0;
 
         let mut records: Vec<NewEmpresa> = Vec::with_capacity(self.config.rows_per_insert());
-        self.db.disable_keys("empresas");
+
+        const TABLE_NAME: &str = "empresas";
+        self.db.disable_keys(TABLE_NAME);
 
         while rdr.read_byte_record(&mut raw_record)? {
 
@@ -197,14 +199,15 @@ impl<'a> Import<'a> {
                     .expect(&format!("Erro ao inserir registros na tabela de empresas!"));
                 records.clear();
                 if self.config.verbose() {
-                    println!("{} registros importados até agora.", &num_records);
+                    print!("{} registros importados até agora.\r", &num_records);
+                    io::stdout().flush().unwrap();
                 }
             }
 
         }
         self.db.upsert_empresa(&records)
             .expect(&format!("Erro ao inserir registros na tabela de empresas!"));
-        self.db.enable_keys("empresas");
+        self.db.enable_keys(TABLE_NAME);
 
         Ok(num_records)
     }
@@ -212,6 +215,10 @@ impl<'a> Import<'a> {
     fn import_estabelecimentos<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
         let mut num_records = 0;
+
+        const TABLE_NAME: &str = "estabelecimentos";
+
+        self.db.disable_keys(TABLE_NAME);
 
         let mut records: Vec<NewEstabelecimento> = Vec::with_capacity(self.config.rows_per_insert());
 
@@ -269,7 +276,8 @@ impl<'a> Import<'a> {
                     .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
                 records.clear();
                 if self.config.verbose() {
-                    println!("{} registros importados até agora.", &num_records);
+                    print!("{} registros importados até agora.\r", &num_records);
+                    io::stdout().flush().unwrap();
                 }
             }
 
@@ -277,6 +285,7 @@ impl<'a> Import<'a> {
 
         self.db.upsert_estabelecimento(&records)
                     .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
+        self.db.enable_keys(TABLE_NAME);
 
         Ok(num_records)
     }
