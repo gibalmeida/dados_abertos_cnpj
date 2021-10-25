@@ -2,6 +2,7 @@
 use std::io::{self, Write};
 use std::error::Error;
 use std::str::FromStr;
+use std::time::Instant;
 
 use csv::Reader;
 
@@ -120,6 +121,7 @@ impl<'a> Import<'a> {
     pub fn run(&self, file: ZipFile) -> Result<(), String>  {
 
         let filename = &*file.name().to_owned();
+        let start_time = Instant::now();
     
         let rdr = csv::ReaderBuilder::new()
             .delimiter(b';')
@@ -141,7 +143,6 @@ impl<'a> Import<'a> {
         
         match processing_result {
             Ok(num_registros) => {
-                println!("{} registros importados.", num_registros);
 
                 let arquivo_importado = NewArquivoImportado{
                     nome_do_arquivo: filename,
@@ -154,6 +155,14 @@ impl<'a> Import<'a> {
                     .expect(&format!("Erro ao inserir registros na tabela de arquivos importados!"));
 
                 self.db.commit();
+
+                let stop_time = Instant::now();
+                let duration_in_millis =stop_time.duration_since(start_time).as_millis();
+                let duration_in_seconds = duration_in_millis as f64 / 1000.0;
+                let records_per_millis = num_registros as f64 / duration_in_millis as f64;
+
+                println!("{} registros importados em {} segundos: {} registros/milissegundos", num_registros, duration_in_seconds, records_per_millis);
+
             },
             Err(err) =>return Err(format!("Erro ao executar: {}", err))
         } 
