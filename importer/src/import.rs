@@ -166,8 +166,7 @@ impl Import {
         let mut raw_record = csv::ByteRecord::new();
         let mut num_records = 0;
 
-        const RECORDS_LIMIT: usize = 1000;
-        let mut records: Vec<NewEmpresa> = Vec::with_capacity(RECORDS_LIMIT);
+        let mut records: Vec<NewEmpresa> = Vec::with_capacity(self.config.records_limit());
 
         while rdr.read_byte_record(&mut raw_record)? {
 
@@ -192,7 +191,7 @@ impl Import {
 
             num_records+=1;
 
-            if records.len() == RECORDS_LIMIT {
+            if records.len() == self.config.records_limit() {
                 self.db.upsert_empresa(&records)
                     .expect(&format!("Erro ao inserir registros na tabela de empresas!"));
                 records.clear();
@@ -210,8 +209,7 @@ impl Import {
         let mut raw_record = csv::ByteRecord::new();
         let mut num_records = 0;
 
-        const RECORDS_LIMIT: usize = 1000;
-        let mut records: Vec<NewEstabelecimento> = Vec::with_capacity(RECORDS_LIMIT);
+        let mut records: Vec<NewEstabelecimento> = Vec::with_capacity(self.config.records_limit());
 
         while rdr.read_byte_record(&mut raw_record)? {
 
@@ -262,7 +260,7 @@ impl Import {
 
             num_records += 1;
 
-            if records.len() == RECORDS_LIMIT {
+            if records.len() == self.config.records_limit() {
                 self.db.upsert_estabelecimento(&records)
                     .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
                 records.clear();
