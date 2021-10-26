@@ -15,7 +15,7 @@ use zip::read::ZipFile;
 
 use crate::tipo_de_arquivo::TipoDeArquivo;
 use crate::config::Config;
-use data_models::database::Database;
+use crate::database::Database;
 use data_models::models::*;
 
 
@@ -106,20 +106,19 @@ fn naive_date_from_str(date_option: Option<String>) -> Option<NaiveDate> {
 
 }
 pub struct Import<'a> {
-    config: Config<'a>,
-    db: Database,
+    config: &'a Config<'a>,
+    db: Database<'a>,
     start_time: Instant,
     num_records: usize,
 }
 
 impl<'a> Import<'a> {
-    pub fn new(config: Config) -> Import {
+    pub fn new(config: &'a Config<'a>) -> Import<'a> {
 
-        let db = Database::new();
+        let db = Database::new(&config);
         let start_time = Instant::now();
-        let num_records = 0;
 
-        Import { config, db, start_time, num_records }
+        Import { config, db, start_time, num_records: 0 }
     }
 
     pub fn run(&mut self, file: ZipFile) -> Result<(), String>  {
@@ -131,6 +130,8 @@ impl<'a> Import<'a> {
             .has_headers(false)
             .from_reader(file);
     
+        self.db.before_table_update();
+
         let mut import_table = |rdr| {
             match self.config.tipo_de_arquivo() {
             TipoDeArquivo::Empresas => self.import_empresas(rdr),
@@ -149,8 +150,7 @@ impl<'a> Import<'a> {
         match import_table(rdr) {
             Ok(()) => {
 
-                self.db.commit();
-
+                self.db.after_table_update();
 
                 let duration_in_seconds = self.duration_in_seconds();
                 let arquivo_importado = NewArquivoImportado{
@@ -163,7 +163,6 @@ impl<'a> Import<'a> {
                 self.db
                     .upsert_arquivo_importado(&arquivo_importado)
                     .expect(&format!("Erro ao inserir registros na tabela de arquivos importados!"));
-                self.db.commit();
 
                 if duration_in_seconds == 0 {
                     println!("{} registros importados em {} milissegundos: {} registros/segundo", self.num_records, self.duration_in_millis(), self.records_per_seconds() );
@@ -182,9 +181,6 @@ impl<'a> Import<'a> {
     fn import_empresas<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
         let mut records: Vec<NewEmpresa> = Vec::with_capacity(self.config.rows_per_insert());
-
-        const TABLE_NAME: &str = "empresas";
-        self.db.disable_keys(TABLE_NAME);
 
         while rdr.read_byte_record(&mut raw_record)? {
 
@@ -219,16 +215,12 @@ impl<'a> Import<'a> {
         }
         self.db.upsert_empresa(&records)
             .expect(&format!("Erro ao inserir registros na tabela de empresas!"));
-        self.db.enable_keys(TABLE_NAME);
-
+                
         Ok(())
     }
 
     fn import_estabelecimentos<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
-        const TABLE_NAME: &str = "estabelecimentos";
-
-        self.db.disable_keys(TABLE_NAME);
 
         let mut records: Vec<NewEstabelecimento> = Vec::with_capacity(self.config.rows_per_insert());
 
@@ -292,7 +284,6 @@ impl<'a> Import<'a> {
 
         self.db.upsert_estabelecimento(&records)
                     .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
-        self.db.enable_keys(TABLE_NAME);
 
         Ok(())
     }
