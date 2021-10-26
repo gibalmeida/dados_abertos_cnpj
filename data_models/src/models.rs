@@ -189,6 +189,7 @@ pub struct ArquivoImportado {
     pub nome_do_arquivo: String,
     pub tabela: String,
     pub registros_processados: u32,
+    pub tempo_decorrido_em_segundos: Option<u64>,
     pub created_at: SystemTime,
 }
 
@@ -199,4 +200,5 @@ pub struct NewArquivoImportado<'a> {
     pub nome_do_arquivo: &'a str,
     pub tabela: &'a str,
     pub registros_processados: u32,
+    pub tempo_decorrido_em_segundos: Option<u64>
 }

@@ -3,7 +3,8 @@ table! {
         nome_do_arquivo -> Varchar,
         tabela -> Varchar,
         registros_processados -> Unsigned<Integer>,
-        created_at -> Nullable<Timestamp>,
+        tempo_decorrido_em_segundos -> Nullable<Unsigned<Bigint>>,
+        created_at -> Timestamp,
     }
 }
 

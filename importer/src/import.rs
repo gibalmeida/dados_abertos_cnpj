@@ -144,24 +144,34 @@ impl<'a> Import<'a> {
         match processing_result {
             Ok(num_registros) => {
 
+                self.db.commit();
+
+                let stop_time = Instant::now();
+                let duration_in_millis =stop_time.duration_since(start_time).as_millis();
+                let duration_in_seconds = stop_time.duration_since(start_time).as_secs();
+                let records_per_seconds = if duration_in_seconds > 0 {
+                    num_registros as f64 / duration_in_seconds as f64
+                } else {
+                    num_registros as f64
+                };
+
                 let arquivo_importado = NewArquivoImportado{
                     nome_do_arquivo: filename,
                     tabela: self.config.tipo_de_arquivo().table_name(),
+                    tempo_decorrido_em_segundos: Some(duration_in_seconds),
                     registros_processados: num_registros as u32,
                 };
 
                 self.db
                     .upsert_arquivo_importado(&arquivo_importado)
                     .expect(&format!("Erro ao inserir registros na tabela de arquivos importados!"));
-
                 self.db.commit();
 
-                let stop_time = Instant::now();
-                let duration_in_millis =stop_time.duration_since(start_time).as_millis();
-                let duration_in_seconds = duration_in_millis as f64 / 1000.0;
-                let records_per_millis = num_registros as f64 / duration_in_millis as f64;
-
-                println!("{} registros importados em {} segundos: {} registros/milissegundos", num_registros, duration_in_seconds, records_per_millis);
+                if duration_in_seconds == 0 {
+                    println!("{} registros importados em {} milissegundos: {} registros/segundo", num_registros, duration_in_millis, records_per_seconds );
+                } else {
+                    println!("{} registros importados em {} segundos: {} registros/segundo", num_registros, duration_in_seconds, records_per_seconds);
+                }
 
             },
             Err(err) =>return Err(format!("Erro ao executar: {}", err))
