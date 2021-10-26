@@ -31,7 +31,7 @@ fn real_main(args: Cli) -> Result<(), String> {
         } else {
             match Config::new(&*file.name(), &args) {
                 Ok(config) => {
-                    let import = Import::new(config);
+                    let mut import = Import::new(config);
         
                     import.run(file)?;
                 },

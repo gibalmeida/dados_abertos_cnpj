@@ -107,31 +107,35 @@ fn naive_date_from_str(date_option: Option<String>) -> Option<NaiveDate> {
 }
 pub struct Import<'a> {
     config: Config<'a>,
-    db: Database
+    db: Database,
+    start_time: Instant,
+    num_records: usize,
 }
 
 impl<'a> Import<'a> {
     pub fn new(config: Config) -> Import {
 
         let db = Database::new();
+        let start_time = Instant::now();
+        let num_records = 0;
 
-        Import { config, db }
+        Import { config, db, start_time, num_records }
     }
 
-    pub fn run(&self, file: ZipFile) -> Result<(), String>  {
+    pub fn run(&mut self, file: ZipFile) -> Result<(), String>  {
 
         let filename = &*file.name().to_owned();
-        let start_time = Instant::now();
     
         let rdr = csv::ReaderBuilder::new()
             .delimiter(b';')
             .has_headers(false)
             .from_reader(file);
     
-        let processing_result = match self.config.tipo_de_arquivo() {
+        let mut import_table = |rdr| {
+            match self.config.tipo_de_arquivo() {
             TipoDeArquivo::Empresas => self.import_empresas(rdr),
-            TipoDeArquivo::CNAES => self.import_cnaes(rdr),
             TipoDeArquivo::Estabelecimentos => self.import_estabelecimentos(rdr),
+            TipoDeArquivo::CNAES => self.import_cnaes(rdr),
             TipoDeArquivo::NaturezasJuridicas => self.import_naturezas_juridicas(rdr),
             TipoDeArquivo::QualificacoesDeSocios => self.import_qualificacoes_de_socios(rdr),
             TipoDeArquivo::Paises => self.import_paises(rdr),
@@ -139,27 +143,21 @@ impl<'a> Import<'a> {
             TipoDeArquivo::MotivosDeSituacoesCadastrais => self.import_motivos_de_situacoes_cadastrais(rdr),
             TipoDeArquivo::Simples => todo!(),
             TipoDeArquivo::Socios => todo!(),
+            }
         };
         
-        match processing_result {
-            Ok(num_registros) => {
+        match import_table(rdr) {
+            Ok(()) => {
 
                 self.db.commit();
 
-                let stop_time = Instant::now();
-                let duration_in_millis =stop_time.duration_since(start_time).as_millis();
-                let duration_in_seconds = stop_time.duration_since(start_time).as_secs();
-                let records_per_seconds = if duration_in_seconds > 0 {
-                    num_registros as f64 / duration_in_seconds as f64
-                } else {
-                    num_registros as f64
-                };
 
+                let duration_in_seconds = self.duration_in_seconds();
                 let arquivo_importado = NewArquivoImportado{
                     nome_do_arquivo: filename,
                     tabela: self.config.tipo_de_arquivo().table_name(),
                     tempo_decorrido_em_segundos: Some(duration_in_seconds),
-                    registros_processados: num_registros as u32,
+                    registros_processados: self.num_records as u32,
                 };
 
                 self.db
@@ -168,9 +166,9 @@ impl<'a> Import<'a> {
                 self.db.commit();
 
                 if duration_in_seconds == 0 {
-                    println!("{} registros importados em {} milissegundos: {} registros/segundo", num_registros, duration_in_millis, records_per_seconds );
+                    println!("{} registros importados em {} milissegundos: {} registros/segundo", self.num_records, self.duration_in_millis(), self.records_per_seconds() );
                 } else {
-                    println!("{} registros importados em {} segundos: {} registros/segundo", num_registros, duration_in_seconds, records_per_seconds);
+                    println!("{} registros importados em {} segundos: {} registros/segundo", self.num_records, duration_in_seconds, self.records_per_seconds());
                 }
 
             },
@@ -181,10 +179,8 @@ impl<'a> Import<'a> {
     }
 
 
-    fn import_empresas<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
+    fn import_empresas<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
-        let mut num_records = 0;
-
         let mut records: Vec<NewEmpresa> = Vec::with_capacity(self.config.rows_per_insert());
 
         const TABLE_NAME: &str = "empresas";
@@ -211,16 +207,13 @@ impl<'a> Import<'a> {
                 ente_federativo_responsavel: Some(ente_federativo_responsavel)
             });
 
-            num_records+=1;
+            self.num_records+=1;
 
             if records.len() == self.config.rows_per_insert() {
                 self.db.upsert_empresa(&records)
                     .expect(&format!("Erro ao inserir registros na tabela de empresas!"));
                 records.clear();
-                if self.config.verbose() {
-                    print!("{} registros importados até agora.\r", &num_records);
-                    io::stdout().flush().unwrap();
-                }
+                self.show_progress();
             }
 
         }
@@ -228,13 +221,11 @@ impl<'a> Import<'a> {
             .expect(&format!("Erro ao inserir registros na tabela de empresas!"));
         self.db.enable_keys(TABLE_NAME);
 
-        Ok(num_records)
+        Ok(())
     }
 
-    fn import_estabelecimentos<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
+    fn import_estabelecimentos<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
-        let mut num_records = 0;
-
         const TABLE_NAME: &str = "estabelecimentos";
 
         self.db.disable_keys(TABLE_NAME);
@@ -288,16 +279,13 @@ impl<'a> Import<'a> {
 
             });
 
-            num_records += 1;
+            self.num_records += 1;
 
             if records.len() == self.config.rows_per_insert() {
                 self.db.upsert_estabelecimento(&records)
                     .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
                 records.clear();
-                if self.config.verbose() {
-                    print!("{} registros importados até agora.\r", &num_records);
-                    io::stdout().flush().unwrap();
-                }
+                self.show_progress();
             }
 
         }
@@ -306,12 +294,11 @@ impl<'a> Import<'a> {
                     .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
         self.db.enable_keys(TABLE_NAME);
 
-        Ok(num_records)
+        Ok(())
     }
     
-    fn import_cnaes<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
+    fn import_cnaes<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
-        let mut num_records = 0;
 
         while rdr.read_byte_record(&mut raw_record)? {
             let id: u32 = std::str::from_utf8(&raw_record[0]).unwrap().parse().unwrap();
@@ -324,15 +311,15 @@ impl<'a> Import<'a> {
             self.db.upsert_cnae(&record)
             .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&record));
 
-            num_records += 1;
+            self.num_records += 1;
+            self.show_progress();
             
         }
-        Ok(num_records)
+        Ok(())
     }  
     
-    fn import_naturezas_juridicas<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
+    fn import_naturezas_juridicas<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
-        let mut num_records = 0;
 
         while rdr.read_byte_record(&mut raw_record)? {
             let id: u16 = std::str::from_utf8(&raw_record[0]).unwrap().parse().unwrap();
@@ -345,15 +332,15 @@ impl<'a> Import<'a> {
             self.db.upsert_natureza_juridica(&record)
                 .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&record));
 
-            num_records += 1;
+            self.num_records += 1;
+            self.show_progress();
             
         }
-        Ok(num_records)
+        Ok(())
     }
 
-    fn import_qualificacoes_de_socios<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
+    fn import_qualificacoes_de_socios<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
-        let mut num_records = 0;
 
         while rdr.read_byte_record(&mut raw_record)? {
             let id: u8 = std::str::from_utf8(&raw_record[0]).unwrap().parse().unwrap();
@@ -366,15 +353,15 @@ impl<'a> Import<'a> {
             self.db.upsert_qualificacoes_de_socios(&record)
                 .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&record));
 
-            num_records += 1;
+            self.num_records += 1;
+            self.show_progress();
             
         }
-        Ok(num_records)
+        Ok(())
     }
 
-    fn import_paises<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
+    fn import_paises<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
-        let mut num_records = 0;
 
         while rdr.read_byte_record(&mut raw_record)? {
             let id: u16 = std::str::from_utf8(&raw_record[0]).unwrap().parse().unwrap();
@@ -387,15 +374,15 @@ impl<'a> Import<'a> {
             self.db.upsert_paises(&record)
                 .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&record));
 
-            num_records += 1;
+            self.num_records += 1;
+            self.show_progress();
             
         }
-        Ok(num_records)
+        Ok(())
     }
     
-    fn import_municipios<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
+    fn import_municipios<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
-        let mut num_records = 0;
 
         while rdr.read_byte_record(&mut raw_record)? {
             let id: u16 = std::str::from_utf8(&raw_record[0]).unwrap().parse().unwrap();
@@ -408,15 +395,15 @@ impl<'a> Import<'a> {
             self.db.upsert_municipios(&record)
                 .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&record));
 
-            num_records += 1;
+            self.num_records += 1;
+            self.show_progress();
             
         }
-        Ok(num_records)
+        Ok(())
     }
 
-    fn import_motivos_de_situacoes_cadastrais<R>(&self, mut rdr: Reader<R>) -> Result<usize, Box<dyn Error>> where R: io::Read, {
+    fn import_motivos_de_situacoes_cadastrais<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
-        let mut num_records = 0;
 
         while rdr.read_byte_record(&mut raw_record)? {
             let id: u8 = std::str::from_utf8(&raw_record[0]).unwrap().parse().unwrap();
@@ -429,9 +416,35 @@ impl<'a> Import<'a> {
             self.db.upsert_motivo_de_situacao_cadastral(&record)
                 .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&record));
 
-            num_records += 1;
+            self.num_records += 1;
+            self.show_progress();
             
         }
-        Ok(num_records)
+        Ok(())
+    }
+
+    fn show_progress(&self) {
+        if self.config.verbose() {
+            // os espaços no final servem para sobrepor na reimpressão do texto, já que o tamanho é variável
+            print!("{} registros importados até agora. {} registros/segundo.                                                           \r", self.num_records, self.records_per_seconds());
+            io::stdout().flush().unwrap();
+        }
+    }
+
+    fn duration_in_seconds(&self) -> u64 {
+        Instant::now().duration_since(self.start_time).as_secs()
+    }
+
+    fn duration_in_millis(&self) -> u128 {
+        Instant::now().duration_since(self.start_time).as_millis()
+    }
+
+    fn records_per_seconds(&self) -> f64 {
+        let duration_in_seconds = self.duration_in_seconds();
+        if duration_in_seconds == 0 {
+            return self.num_records as f64
+        };
+
+        self.num_records as f64 / duration_in_seconds as f64
     }
 }
