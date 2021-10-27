@@ -128,6 +128,11 @@ impl<'a> Database<'a> {
                 ]                
         
             },
+            TipoDeArquivo::Socios => {
+                vec![
+                    (table_name,"DROP COLUMN id")
+                ]
+            },
             _ => {
                 println!("Aviso! Não há necessidade de remover os índices da tabela {} pois a quantidade de registros é muito pequena e não haveria nenhum ganho de performance.", table_name);
                 return ();
@@ -161,6 +166,11 @@ impl<'a> Database<'a> {
                     (TipoDeArquivo::Estabelecimentos.table_name(),"ADD CONSTRAINT FK_EstabEmp FOREIGN KEY (cnpj_basico) REFERENCES empresas(cnpj_basico)"),
                 ]     
             },
+            TipoDeArquivo::Socios => {
+                vec![
+                    (table_name,"ADD COLUMN id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY FIRST")
+                ]
+            }
             _ => {
                 println!("Aviso! Não há necessidade de remover os índices da tabela {} pois a quantidade de registros é muito pequena e não haveria nenhum ganho de performance.", self.config.tipo_de_arquivo().table_name());
                 return;
@@ -236,6 +246,24 @@ impl<'a> Database<'a> {
 
         diesel::replace_into(estabelecimentos::table)
             .values(new_estabelecimento)
+            .execute(&self.db_connection)
+    }
+
+    pub fn upsert_socio(
+        &self,
+        new_socio: &Vec<NewSocio>,
+    ) -> QueryResult<usize> {
+        use data_models::schema::socios;
+
+        if self.config.truncate_table() || self.config.empty() {
+            // se a tabela foi zerada, então é melhor utilizar o insert ao invés do replace_into
+            return diesel::insert_into(socios::table)
+                .values(new_socio)
+                .execute(&self.db_connection)
+        }
+
+        diesel::replace_into(socios::table)
+            .values(new_socio)
             .execute(&self.db_connection)
     }
 

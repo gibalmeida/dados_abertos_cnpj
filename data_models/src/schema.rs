@@ -4,7 +4,7 @@ table! {
         tabela -> Varchar,
         registros_processados -> Unsigned<Integer>,
         tempo_decorrido_em_segundos -> Nullable<Unsigned<Bigint>>,
-        created_at -> Timestamp,
+        created_at -> Nullable<Timestamp>,
     }
 }
 
@@ -104,6 +104,23 @@ table! {
     }
 }
 
+table! {
+    socios (id) {
+        id -> Unsigned<Integer>,
+        cnpj_basico -> Char,
+        identificador_de_socio -> Unsigned<Tinyint>,
+        nome_ou_razao_social_do_socio -> Varchar,
+        cnpj_ou_cpf_do_socio -> Nullable<Char>,
+        qualificacao_do_socio -> Unsigned<Tinyint>,
+        data_de_entrada_na_sociedade -> Date,
+        pais_do_socio -> Nullable<Unsigned<Smallint>>,
+        cpf_do_representante_legal -> Char,
+        nome_do_representante_legal -> Varchar,
+        qualificacao_do_representante_legal -> Unsigned<Tinyint>,
+        faixa_etaria_do_socio -> Unsigned<Tinyint>,
+    }
+}
+
 joinable!(empresas -> naturezas_juridicas (natureza_juridica));
 joinable!(empresas -> qualificacoes_de_socios (qualificacao_do_responsavel));
 joinable!(estabelecimentos -> cnaes (cnae_fiscal_principal));
@@ -124,4 +141,5 @@ allow_tables_to_appear_in_same_query!(
     paises,
     qualificacoes_de_socios,
     situacoes_cadastrais,
+    socios,
 );

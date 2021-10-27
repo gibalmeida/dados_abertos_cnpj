@@ -4,7 +4,7 @@ use bigdecimal::BigDecimal;
 use chrono::NaiveDate;
 use serde::Serialize;
 
-use super::schema::{empresas,estabelecimentos,cnaes,naturezas_juridicas,municipios,paises,qualificacoes_de_socios,motivos_de_situacoes_cadastrais,arquivos_importados};
+use super::schema::{empresas,estabelecimentos,cnaes,naturezas_juridicas,municipios,paises,qualificacoes_de_socios,motivos_de_situacoes_cadastrais,arquivos_importados,socios};
 
 #[derive(Identifiable, Queryable, Serialize)]
 #[primary_key(cnpj_basico)]
@@ -201,4 +201,36 @@ pub struct NewArquivoImportado<'a> {
     pub tabela: &'a str,
     pub registros_processados: u32,
     pub tempo_decorrido_em_segundos: Option<u64>
+}
+
+#[derive(Queryable)]
+pub struct Socio {
+    pub id: u32,
+    pub cnpj_basico: String,
+    pub identificador_de_socio: u8,
+    pub nome_ou_razao_social_do_socio: String,
+    pub cnpj_ou_cpf_do_socio: Option<String>,
+    pub qualificacao_do_socio: u8,
+    pub data_de_entrada_na_sociedade: NaiveDate,
+    pub pais_do_socio: Option<u16>,
+    pub cpf_do_representante_legal: String,
+    pub nome_do_representante_legal: String,
+    pub qualificacao_do_representante_legal: u8,
+    pub faixa_etaria_do_socio: u8
+}
+
+#[derive(Debug,Insertable)]
+#[table_name="socios"]
+pub struct NewSocio {
+    pub cnpj_basico: String,
+    pub identificador_de_socio: u8,
+    pub nome_ou_razao_social_do_socio: String,
+    pub cnpj_ou_cpf_do_socio: Option<String>,
+    pub qualificacao_do_socio: u8,
+    pub data_de_entrada_na_sociedade: NaiveDate,
+    pub pais_do_socio: Option<u16>,
+    pub cpf_do_representante_legal: String,
+    pub nome_do_representante_legal: String,
+    pub qualificacao_do_representante_legal: u8,
+    pub faixa_etaria_do_socio: u8,    
 }

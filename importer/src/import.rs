@@ -89,6 +89,23 @@ struct EstabelecimentoCsvRecord<'a> {
     data_situacao_especial: Option<String>,    
 }
 
+#[derive(Debug, Deserialize)]
+struct SocioCsvRecord<'a> {
+    cnpj_basico: String,
+    identificador_de_socio: u8,
+    #[serde(with = "serde_bytes")]
+    nome_ou_razao_social_do_socio: &'a [u8],
+    cnpj_ou_cpf_do_socio: Option<String>,
+    qualificacao_do_socio: u8,
+    data_de_entrada_na_sociedade: String,
+    pais_do_socio: Option<u16>,
+    cpf_do_representante_legal: String,
+    #[serde(with = "serde_bytes")]
+    nome_do_representante_legal: &'a [u8],
+    qualificacao_do_representante_legal: u8,
+    faixa_etaria_do_socio: u8,    
+}
+
 fn naive_date_from_str(date_option: Option<String>) -> Option<NaiveDate> {
 
 
@@ -143,7 +160,7 @@ impl<'a> Import<'a> {
             TipoDeArquivo::Municipios => self.import_municipios(rdr),
             TipoDeArquivo::MotivosDeSituacoesCadastrais => self.import_motivos_de_situacoes_cadastrais(rdr),
             TipoDeArquivo::Simples => todo!(),
-            TipoDeArquivo::Socios => todo!(),
+            TipoDeArquivo::Socios => self.import_socios(rdr),
             }
         };
         
@@ -289,6 +306,48 @@ impl<'a> Import<'a> {
         Ok(())
     }
     
+    fn import_socios<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
+        let mut raw_record = csv::ByteRecord::new();
+
+        let mut records: Vec<NewSocio> = Vec::with_capacity(self.config.rows_per_insert());
+
+        while rdr.read_byte_record(&mut raw_record)? {
+
+            let record: SocioCsvRecord = raw_record.deserialize(None)
+                .expect(&format!("Erro ao deserializar o seguinte registro: {:?}", raw_record));
+
+            records.push( NewSocio {
+                cnpj_basico: record.cnpj_basico,
+                identificador_de_socio: record.identificador_de_socio,
+                nome_ou_razao_social_do_socio: ISO_8859_15.decode(record.nome_ou_razao_social_do_socio, DecoderTrap::Strict).unwrap(),
+                cnpj_ou_cpf_do_socio: record.cnpj_ou_cpf_do_socio,
+                qualificacao_do_socio: record.qualificacao_do_socio,
+                data_de_entrada_na_sociedade: NaiveDate::parse_from_str(&record.data_de_entrada_na_sociedade, "%Y%m%d").unwrap(),
+                pais_do_socio: record.pais_do_socio,
+                cpf_do_representante_legal: record.cpf_do_representante_legal,
+                nome_do_representante_legal: ISO_8859_15.decode(record.nome_do_representante_legal, DecoderTrap::Strict).unwrap(),
+                qualificacao_do_representante_legal: record.qualificacao_do_representante_legal,
+                faixa_etaria_do_socio: record.faixa_etaria_do_socio,  
+
+            });
+
+            self.num_records += 1;
+
+            if records.len() == self.config.rows_per_insert() {
+                self.db.upsert_socio(&records)
+                    .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
+                records.clear();
+                self.show_progress();
+            }
+
+        }
+
+        self.db.upsert_socio(&records)
+                    .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
+
+        Ok(())
+    }
+
     fn import_cnaes<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();
 
@@ -431,12 +490,12 @@ impl<'a> Import<'a> {
         Instant::now().duration_since(self.start_time).as_millis()
     }
 
-    fn records_per_seconds(&self) -> f64 {
+    fn records_per_seconds(&self) -> u64 {
         let duration_in_seconds = self.duration_in_seconds();
         if duration_in_seconds == 0 {
-            return self.num_records as f64
+            return self.num_records as u64
         };
 
-        self.num_records as f64 / duration_in_seconds as f64
+        self.num_records as u64 / duration_in_seconds
     }
 }
