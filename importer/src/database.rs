@@ -26,15 +26,12 @@ impl<'a> Database<'a> {
 
         // Desativa o autocommit, checagens de chaves estrangeiras e checagens de chaves únicas (unique)
         // para dar mais performance nas gravações do banco de dados (vide: https://dev.mysql.com/doc/refman/8.0/en/optimizing-innodb-bulk-data-loading.html)
-        sql_query("SET autocommit=0")
-            .execute(&self.db_connection)
-            .expect("Erro ao desativar o autocommit!");
-        sql_query("SET foreign_key_checks = 0")
-            .execute(&self.db_connection)
-            .expect("Erro ao desativar checagens de chaves estrangeiras!");
-        sql_query("SET unique_checks=0")
-            .execute(&self.db_connection)
-            .expect("Erro ao desativar checagens de chaves únicas!");        
+        let queries = vec![
+            "SET autocommit=0", // Desabilita o Auto Commit (a gravação efetiva dos registros irão ocorrer no final do processamento do arquivo)
+            "SET foreign_key_checks = 0", // Desativa a checagem de chaves estrageiras de modo a aumentar a performance de população das tabelas
+            "SET unique_checks=0", // Desativa a checagem de chaves únicas, também para aumentar a performance.
+        ];
+        self.sql_queries(queries, true); 
             
         if self.config.truncate_table() && self.config.is_first_file_number() {
             self.truncate_table(table_name);
@@ -63,12 +60,15 @@ impl<'a> Database<'a> {
         }        
 
         self.commit();
-        sql_query("SET foreign_key_checks = 1")
-            .execute(&self.db_connection)
-            .expect("Erro ao ativar novamente checagens de chaves estrangeiras!");
-        sql_query("SET unique_checks=1")
-            .execute(&self.db_connection)
-            .expect("Erro ao ativar novamente checagens de chaves únicas!");
+
+        // Habilitando novamente algumas coisas que foram desabilitadas antes de iniciar o processamento do arquivo
+        let queries = vec![
+            "SET foreign_key_checks = 1", // Habilita a checagem de chaves estrangeiras
+            "SET unique_checks=1", // Habilita a checagem de chaves únicas
+            "SET autocommit=1", // Habilita o Auto Commit
+        ];
+
+        self.sql_queries(queries, true);
 
     }
 
@@ -133,7 +133,7 @@ impl<'a> Database<'a> {
                 return ();
             }
         };
-        self.alter_table_modifications( alter_table_modifications, "Aviso! O seguinte erro ocorreu durante a remoção dos índices da tabela", false)
+        self.alter_table_modifications( alter_table_modifications, false)
     }
 
     pub fn add_indexes_and_primary_keys(&self) {
@@ -150,12 +150,6 @@ impl<'a> Database<'a> {
                     (table_name,"ADD CONSTRAINT FK_EstabCnaePrinc FOREIGN KEY (cnae_fiscal_principal) REFERENCES cnaes(id)"),
                     (table_name,"ADD CONSTRAINT FK_EstabMunic FOREIGN KEY (municipio) REFERENCES municipios(id)"),
                     (table_name,"ADD CONSTRAINT FK_EstabSitCad FOREIGN KEY (situacao_cadastral) REFERENCES situacoes_cadastrais(id)")
-                    // "ADD INDEX FK_EstabEmp (cnpj_basico)",
-                    // "ADD INDEX FK_EstabSitCad (situacao_cadastral)", 
-                    // "ADD INDEX FK_EstabMotivCad (motivo_situacao_cadastral)",
-                    // "ADD INDEX FK_EstabPais (pais)",
-                    // "ADD INDEX FK_EstabCnaePrinc (cnae_fiscal_principal)",
-                    // "ADD INDEX FK_EstabMunic (municipio"
                 ]                
             },
             TipoDeArquivo::Empresas => {
@@ -172,7 +166,7 @@ impl<'a> Database<'a> {
                 return;
             }
         };
-        self.alter_table_modifications(alter_table_modifications, "Aviso! O seguinte erro ocorreu durante a adição de índices na tabela ", false);
+        self.alter_table_modifications(alter_table_modifications, false);
     }    
 
     pub fn truncate_table(&self, table_name: &str) {
@@ -181,30 +175,31 @@ impl<'a> Database<'a> {
             .expect("Erro ao zerar a tabela.");
     }
     
-    pub fn alter_table_modifications(&self, alter_table_lines: Vec<(&str,&str)>, error_msg_prefix: &str, panic: bool ) {
+    pub fn alter_table_modifications(&self, alter_table_lines: Vec<(&str,&str)>, panic: bool ) {
         for (table_name, line) in alter_table_lines {
-            sql_query(format!("ALTER TABLE {} {}",table_name, line))
+            let query = format!("ALTER TABLE {} {}",table_name, line);
+            sql_query(&query)
                 .execute(&self.db_connection)
                 .unwrap_or_else(|error| {
                     if panic {
-                        panic!("{} {} : {:?}", error_msg_prefix,table_name,error);
+                        panic!("Erro fatal! O seguinte erro ocorreu ao executar a query {{{}}}': {:?}", query, error);
                     }
-                    println!("{} {} : {:?}", error_msg_prefix,table_name,error);
+                    println!("Aviso! O seguinte erro ocorreu ao executar a query {{{}}}': {:?}", query, error);
                     0
                 });
         }
     }
 
-    pub fn sql_queries(&self, queries: Vec<&str>, error_msg_prefix: String, panic: bool) {
+    pub fn sql_queries(&self, queries: Vec<&str>, panic: bool) {
 
         for query in queries {
             sql_query(query)
             .execute(&self.db_connection)
             .unwrap_or_else(|error| {
                 if panic {
-                    panic!("{} : {:?}", error_msg_prefix,error);
+                    panic!("Erro fatal! O seguinte erro ocorreu ao executar a query {{{}}}': {:?}", query, error);
                 }
-                println!("{} : {:?}", error_msg_prefix,error);
+                println!("Aviso! O seguinte erro ocorreu ao executar a query {{{}}}': {:?}", query, error);
                 0
             });    
 
