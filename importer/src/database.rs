@@ -133,6 +133,11 @@ impl<'a> Database<'a> {
                     (table_name,"DROP COLUMN id")
                 ]
             },
+            TipoDeArquivo::Simples => {
+                vec![
+                    (table_name,"DROP PRIMARY KEY")
+                ]
+            },
             _ => {
                 println!("Aviso! Não há necessidade de remover os índices da tabela {} pois a quantidade de registros é muito pequena e não haveria nenhum ganho de performance.", table_name);
                 return ();
@@ -170,7 +175,12 @@ impl<'a> Database<'a> {
                 vec![
                     (table_name,"ADD COLUMN id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY FIRST")
                 ]
-            }
+            },
+            TipoDeArquivo::Simples => {
+                vec![
+                    (table_name,"ADD PRIMARY KEY (cnpj_basico)")
+                ]
+            },
             _ => {
                 println!("Aviso! Não há necessidade de remover os índices da tabela {} pois a quantidade de registros é muito pequena e não haveria nenhum ganho de performance.", self.config.tipo_de_arquivo().table_name());
                 return;
@@ -264,6 +274,24 @@ impl<'a> Database<'a> {
 
         diesel::replace_into(socios::table)
             .values(new_socio)
+            .execute(&self.db_connection)
+    }
+
+    pub fn upsert_simples(
+        &self,
+        new_simples: &Vec<NewSimples>,
+    ) -> QueryResult<usize> {
+        use data_models::schema::simples;
+
+        if self.config.truncate_table() || self.config.empty() {
+            // se a tabela foi zerada, então é melhor utilizar o insert ao invés do replace_into
+            return diesel::insert_into(simples::table)
+                .values(new_simples)
+                .execute(&self.db_connection)
+        }
+
+        diesel::replace_into(simples::table)
+            .values(new_simples)
             .execute(&self.db_connection)
     }
 

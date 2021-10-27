@@ -1,0 +1,1 @@
+DROP TABLE faixas_etarias

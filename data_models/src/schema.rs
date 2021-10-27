@@ -63,6 +63,13 @@ table! {
 }
 
 table! {
+    faixas_etarias (id) {
+        id -> Unsigned<Tinyint>,
+        nome -> Nullable<Varchar>,
+    }
+}
+
+table! {
     motivos_de_situacoes_cadastrais (id) {
         id -> Unsigned<Tinyint>,
         nome -> Varchar,
@@ -94,6 +101,18 @@ table! {
     qualificacoes_de_socios (id) {
         id -> Unsigned<Tinyint>,
         nome -> Varchar,
+    }
+}
+
+table! {
+    simples (cnpj_basico) {
+        cnpj_basico -> Char,
+        opcao_pelo_simples -> Char,
+        data_de_opcao_pelo_simples -> Nullable<Date>,
+        data_de_exclusao_do_simples -> Nullable<Date>,
+        opcao_pelo_mei -> Char,
+        data_de_opcao_pelo_mei -> Nullable<Date>,
+        data_de_exclusao_do_mei -> Nullable<Date>,
     }
 }
 
@@ -135,11 +154,13 @@ allow_tables_to_appear_in_same_query!(
     cnaes,
     empresas,
     estabelecimentos,
+    faixas_etarias,
     motivos_de_situacoes_cadastrais,
     municipios,
     naturezas_juridicas,
     paises,
     qualificacoes_de_socios,
+    simples,
     situacoes_cadastrais,
     socios,
 );

@@ -4,7 +4,7 @@ use bigdecimal::BigDecimal;
 use chrono::NaiveDate;
 use serde::Serialize;
 
-use super::schema::{empresas,estabelecimentos,cnaes,naturezas_juridicas,municipios,paises,qualificacoes_de_socios,motivos_de_situacoes_cadastrais,arquivos_importados,socios};
+use super::schema::{empresas,estabelecimentos,cnaes,naturezas_juridicas,municipios,paises,qualificacoes_de_socios,motivos_de_situacoes_cadastrais,arquivos_importados,socios,simples};
 
 #[derive(Identifiable, Queryable, Serialize)]
 #[primary_key(cnpj_basico)]
@@ -233,4 +233,27 @@ pub struct NewSocio {
     pub nome_do_representante_legal: String,
     pub qualificacao_do_representante_legal: u8,
     pub faixa_etaria_do_socio: u8,    
+}
+
+#[derive(Queryable)]
+pub struct Simples {
+    pub cnpj_basico: String,
+    pub opcao_pelo_simples: String,
+    pub data_de_opcao_pelo_simples: Option<NaiveDate>,
+    pub data_de_exclusao_do_simples: Option<NaiveDate>,
+    pub opcao_pelo_mei: String,
+    pub data_de_opcao_pelo_mei: Option<NaiveDate>,
+    pub data_de_exclusao_do_mei: Option<NaiveDate>,    
+}
+ 
+#[derive(Debug,Insertable)]
+#[table_name="simples"]
+pub struct NewSimples {
+    pub cnpj_basico: String,
+    pub opcao_pelo_simples: String,
+    pub data_de_opcao_pelo_simples: Option<NaiveDate>,
+    pub data_de_exclusao_do_simples: Option<NaiveDate>,
+    pub opcao_pelo_mei: String,
+    pub data_de_opcao_pelo_mei: Option<NaiveDate>,
+    pub data_de_exclusao_do_mei: Option<NaiveDate>,
 }

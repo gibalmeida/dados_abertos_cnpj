@@ -106,6 +106,17 @@ struct SocioCsvRecord<'a> {
     faixa_etaria_do_socio: u8,    
 }
 
+#[derive(Debug, Deserialize)]
+struct SimplesCsvRecord {
+    cnpj_basico: String,
+    opcao_pelo_simples: String,
+    data_de_opcao_pelo_simples: Option<String>,
+    data_de_exclusao_do_simples: Option<String>,
+    opcao_pelo_mei: String,
+    data_de_opcao_pelo_mei: Option<String>,
+    data_de_exclusao_do_mei: Option<String>,
+}
+
 fn naive_date_from_str(date_option: Option<String>) -> Option<NaiveDate> {
 
 
@@ -159,7 +170,7 @@ impl<'a> Import<'a> {
             TipoDeArquivo::Paises => self.import_paises(rdr),
             TipoDeArquivo::Municipios => self.import_municipios(rdr),
             TipoDeArquivo::MotivosDeSituacoesCadastrais => self.import_motivos_de_situacoes_cadastrais(rdr),
-            TipoDeArquivo::Simples => todo!(),
+            TipoDeArquivo::Simples => self.import_simples(rdr),
             TipoDeArquivo::Socios => self.import_socios(rdr),
             }
         };
@@ -335,7 +346,7 @@ impl<'a> Import<'a> {
 
             if records.len() == self.config.rows_per_insert() {
                 self.db.upsert_socio(&records)
-                    .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
+                    .expect(&format!("Erro ao inserir registros na tabela de socios!"));
                 records.clear();
                 self.show_progress();
             }
@@ -343,7 +354,44 @@ impl<'a> Import<'a> {
         }
 
         self.db.upsert_socio(&records)
-                    .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
+                    .expect(&format!("Erro ao inserir registros na tabela de socios!"));
+
+        Ok(())
+    }
+
+    fn import_simples<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
+        let mut raw_record = csv::ByteRecord::new();
+
+        let mut records: Vec<NewSimples> = Vec::with_capacity(self.config.rows_per_insert());
+
+        while rdr.read_byte_record(&mut raw_record)? {
+
+            let record: SimplesCsvRecord = raw_record.deserialize(None)
+                .expect(&format!("Erro ao deserializar o seguinte registro: {:?}", raw_record));
+
+            records.push( NewSimples {
+                cnpj_basico: record.cnpj_basico,
+                opcao_pelo_simples: record.opcao_pelo_simples,
+                data_de_opcao_pelo_simples: naive_date_from_str(record.data_de_opcao_pelo_simples),
+                data_de_exclusao_do_simples: naive_date_from_str(record.data_de_exclusao_do_simples),
+                opcao_pelo_mei: record.opcao_pelo_mei,
+                data_de_opcao_pelo_mei: naive_date_from_str(record.data_de_opcao_pelo_mei),
+                data_de_exclusao_do_mei: naive_date_from_str(record.data_de_exclusao_do_mei),
+            });
+
+            self.num_records += 1;
+
+            if records.len() == self.config.rows_per_insert() {
+                self.db.upsert_simples(&records)
+                    .expect(&format!("Erro ao inserir registros na tabela do simples!"));
+                records.clear();
+                self.show_progress();
+            }
+
+        }
+
+        self.db.upsert_simples(&records)
+                    .expect(&format!("Erro ao inserir registros na tabela do simples!"));
 
         Ok(())
     }
