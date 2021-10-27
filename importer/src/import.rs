@@ -163,6 +163,7 @@ impl<'a> Import<'a> {
                 self.db
                     .upsert_arquivo_importado(&arquivo_importado)
                     .expect(&format!("Erro ao inserir registros na tabela de arquivos importados!"));
+                self.db.commit();
 
                 if duration_in_seconds == 0 {
                     println!("{} registros importados em {} milissegundos: {} registros/segundo", self.num_records, self.duration_in_millis(), self.records_per_seconds() );

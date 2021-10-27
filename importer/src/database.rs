@@ -6,6 +6,7 @@ use diesel::{prelude::*, sql_query};
 use dotenv::dotenv;
 
 use crate::config::Config;
+use crate::tipo_de_arquivo::TipoDeArquivo;
 
 pub struct Database<'a> {
     db_connection: MysqlConnection,
@@ -38,22 +39,36 @@ impl<'a> Database<'a> {
         if self.config.truncate_table() && self.config.is_first_file_number() {
             self.truncate_table(table_name);
         }
-        
-        if self.config.disable_keys() { 
-            self.disable_keys(table_name);
+
+        if self.config.is_first_file_number() && self.config.drop_indexes() {
+            self.drop_indexes_and_primary_keys();
         }
+        
+        // if self.config.disable_keys() { 
+        //     self.disable_keys(table_name);
+        // }
 
     }
 
     pub fn after_table_update(&self) {
 
-        let table_name = self.config.tipo_de_arquivo().table_name();
-        
-        if self.config.disable_keys() && self.config.is_last_file_number() { 
-            self.enable_keys(table_name);
-        }
+        // let table_name = self.config.tipo_de_arquivo().table_name();
+        // 
+        // if self.config.disable_keys() && self.config.is_last_file_number() { 
+        //     self.enable_keys(table_name);
+        // }
+
+        if self.config.is_last_file_number() && self.config.drop_indexes() {
+            self.add_indexes_and_primary_keys();
+        }        
 
         self.commit();
+        sql_query("SET foreign_key_checks = 1")
+            .execute(&self.db_connection)
+            .expect("Erro ao ativar novamente checagens de chaves estrangeiras!");
+        sql_query("SET unique_checks=1")
+            .execute(&self.db_connection)
+            .expect("Erro ao ativar novamente checagens de chaves únicas!");
 
     }
 
@@ -62,12 +77,7 @@ impl<'a> Database<'a> {
         sql_query("COMMIT")
             .execute(&self.db_connection)
             .expect("Erro ao executar o commit!");
-        sql_query("SET foreign_key_checks = 1")
-            .execute(&self.db_connection)
-            .expect("Erro ao ativar novamente checagens de chaves estrangeiras!");
-        sql_query("SET unique_checks=1")
-            .execute(&self.db_connection)
-            .expect("Erro ao ativar novamente checagens de chaves únicas!");
+
     }
 
     pub fn enable_keys(&self, table_name: &str) {
@@ -82,24 +92,88 @@ impl<'a> Database<'a> {
             .expect("Erro ao habilitar chaves");
     }
 
-    // pub fn drop_foreign_keys(&self) {
+    pub fn drop_indexes_and_primary_keys(&self) {
 
-    // sql_query("ALTER TABLE estabelecimentos
-    // DROP FOREIGN KEY FK_EstabSitCad,
-    // DROP FOREIGN KEY FK_EstabMotivCad,
-    // DROP FOREIGN KEY FK_EstabPais,
-    // DROP FOREIGN KEY FK_EstabCnaePrinc,
-    // DROP FOREIGN KEY FK_EstabMunic;")
-    //     .execute(&self.db_connection)
-    //     .expect("Erro ao remover as chaves estrangeiras da tabela estabelecimentos");
-    
-    // sql_query("ALTER TABLE empresas
-    // DROP FOREIGN KEY FK_EmpNatJur,
-    // DROP FOREIGN KEY FK_EmpQualResp;")
-    //     .execute(&self.db_connection)
-    //     .expect("Erro ao remover as chaves estrangeiras da tabela empresas");    
 
-    // }
+        let table_name = self.config.tipo_de_arquivo().table_name();
+
+        let alter_table_modifications = match self.config.tipo_de_arquivo() {
+            TipoDeArquivo::Estabelecimentos => {
+
+                vec![
+                    (table_name,"DROP FOREIGN KEY FK_EstabSitCad"),
+                    (table_name,"DROP INDEX FK_EstabSitCad"),
+                    (table_name,"DROP FOREIGN KEY FK_EstabMotivCad"),
+                    (table_name,"DROP INDEX FK_EstabMotivCad"),
+                    (table_name,"DROP FOREIGN KEY FK_EstabPais"),
+                    (table_name,"DROP INDEX FK_EstabPais"),
+                    (table_name,"DROP FOREIGN KEY FK_EstabCnaePrinc"),
+                    (table_name,"DROP INDEX FK_EstabCnaePrinc"),
+                    (table_name,"DROP FOREIGN KEY FK_EstabMunic"),
+                    (table_name,"DROP INDEX FK_EstabMunic"),
+                    (table_name,"DROP FOREIGN KEY FK_EstabEmp"),
+                    (table_name,"DROP PRIMARY KEY"),
+                ]
+                
+            },
+            TipoDeArquivo::Empresas => {
+
+                vec![
+                    (table_name,"DROP FOREIGN KEY FK_EmpNatJur"),
+                    (table_name,"DROP INDEX FK_EmpNatJur"),
+                    (table_name,"DROP FOREIGN KEY FK_EmpQualResp"),
+                    (table_name,"DROP INDEX FK_EmpQualResp"),
+                    (TipoDeArquivo::Estabelecimentos.table_name(),"DROP FOREIGN KEY FK_EstabEmp"),
+                    (table_name,"DROP PRIMARY KEY"),
+                ]                
+        
+            },
+            _ => {
+                println!("Aviso! Não há necessidade de remover os índices da tabela {} pois a quantidade de registros é muito pequena e não haveria nenhum ganho de performance.", table_name);
+                return ();
+            }
+        };
+        self.alter_table_modifications( alter_table_modifications, "Aviso! O seguinte erro ocorreu durante a remoção dos índices da tabela", false)
+    }
+
+    pub fn add_indexes_and_primary_keys(&self) {
+
+        let table_name = self.config.tipo_de_arquivo().table_name();
+
+        let alter_table_modifications = match self.config.tipo_de_arquivo() {
+            TipoDeArquivo::Estabelecimentos => {
+                vec![
+                    (table_name,"ADD PRIMARY KEY (cnpj_basico, cnpj_ordem, cnpj_dv)"),
+                    (table_name,"ADD CONSTRAINT FK_EstabEmp FOREIGN KEY (cnpj_basico) REFERENCES empresas(cnpj_basico)"),
+                    (table_name,"ADD CONSTRAINT FK_EstabMotivCad FOREIGN KEY (motivo_situacao_cadastral) REFERENCES motivos_de_situacoes_cadastrais(id)"),
+                    (table_name,"ADD CONSTRAINT FK_EstabPais FOREIGN KEY (pais) REFERENCES paises(id)"),
+                    (table_name,"ADD CONSTRAINT FK_EstabCnaePrinc FOREIGN KEY (cnae_fiscal_principal) REFERENCES cnaes(id)"),
+                    (table_name,"ADD CONSTRAINT FK_EstabMunic FOREIGN KEY (municipio) REFERENCES municipios(id)"),
+                    (table_name,"ADD CONSTRAINT FK_EstabSitCad FOREIGN KEY (situacao_cadastral) REFERENCES situacoes_cadastrais(id)")
+                    // "ADD INDEX FK_EstabEmp (cnpj_basico)",
+                    // "ADD INDEX FK_EstabSitCad (situacao_cadastral)", 
+                    // "ADD INDEX FK_EstabMotivCad (motivo_situacao_cadastral)",
+                    // "ADD INDEX FK_EstabPais (pais)",
+                    // "ADD INDEX FK_EstabCnaePrinc (cnae_fiscal_principal)",
+                    // "ADD INDEX FK_EstabMunic (municipio"
+                ]                
+            },
+            TipoDeArquivo::Empresas => {
+
+                vec![
+                    (table_name,"ADD PRIMARY KEY (cnpj_basico)"),
+                    (table_name,"ADD CONSTRAINT FK_EmpNatJur FOREIGN KEY (natureza_juridica) REFERENCES naturezas_juridicas(id)"),
+                    (table_name,"ADD CONSTRAINT FK_EmpQualResp FOREIGN KEY (qualificacao_do_responsavel) REFERENCES qualificacoes_de_socios(id)"),
+                    (TipoDeArquivo::Estabelecimentos.table_name(),"ADD CONSTRAINT FK_EstabEmp FOREIGN KEY (cnpj_basico) REFERENCES empresas(cnpj_basico)"),
+                ]     
+            },
+            _ => {
+                println!("Aviso! Não há necessidade de remover os índices da tabela {} pois a quantidade de registros é muito pequena e não haveria nenhum ganho de performance.", self.config.tipo_de_arquivo().table_name());
+                return;
+            }
+        };
+        self.alter_table_modifications(alter_table_modifications, "Aviso! O seguinte erro ocorreu durante a adição de índices na tabela ", false);
+    }    
 
     pub fn truncate_table(&self, table_name: &str) {
         sql_query(format!("TRUNCATE TABLE {}", table_name))
@@ -107,6 +181,35 @@ impl<'a> Database<'a> {
             .expect("Erro ao zerar a tabela.");
     }
     
+    pub fn alter_table_modifications(&self, alter_table_lines: Vec<(&str,&str)>, error_msg_prefix: &str, panic: bool ) {
+        for (table_name, line) in alter_table_lines {
+            sql_query(format!("ALTER TABLE {} {}",table_name, line))
+                .execute(&self.db_connection)
+                .unwrap_or_else(|error| {
+                    if panic {
+                        panic!("{} {} : {:?}", error_msg_prefix,table_name,error);
+                    }
+                    println!("{} {} : {:?}", error_msg_prefix,table_name,error);
+                    0
+                });
+        }
+    }
+
+    pub fn sql_queries(&self, queries: Vec<&str>, error_msg_prefix: String, panic: bool) {
+
+        for query in queries {
+            sql_query(query)
+            .execute(&self.db_connection)
+            .unwrap_or_else(|error| {
+                if panic {
+                    panic!("{} : {:?}", error_msg_prefix,error);
+                }
+                println!("{} : {:?}", error_msg_prefix,error);
+                0
+            });    
+
+        }
+    }
 
     pub fn upsert_empresa(&self, new_empresa: &Vec<NewEmpresa>) -> QueryResult<usize> {
         use data_models::schema::empresas;

@@ -53,12 +53,12 @@ impl<'a> Config<'a> {
         self.args.empty
     }
 
-    pub fn disable_keys(&self) -> bool {
-        self.args.disable_keys
-    }
-
     pub fn truncate_table(&self) -> bool {
         self.args.truncate_table
     } 
+
+    pub fn drop_indexes(&self) -> bool {
+        self.args.drop_indexes
+    }
 }
 
