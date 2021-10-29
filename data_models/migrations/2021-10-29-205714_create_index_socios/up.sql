@@ -1,0 +1,1 @@
+CREATE INDEX socios_cnpj_basico ON socios (cnpj_basico)

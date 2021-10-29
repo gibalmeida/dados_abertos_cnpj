@@ -130,7 +130,8 @@ impl<'a> Database<'a> {
             },
             TipoDeArquivo::Socios => {
                 vec![
-                    (table_name,"DROP COLUMN id")
+                    (table_name,"DROP COLUMN id"),
+                    (table_name,"DROP INDEX socios_cnpj_basico")
                 ]
             },
             TipoDeArquivo::Simples => {
@@ -173,7 +174,8 @@ impl<'a> Database<'a> {
             },
             TipoDeArquivo::Socios => {
                 vec![
-                    (table_name,"ADD COLUMN id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY FIRST")
+                    (table_name,"ADD COLUMN id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY FIRST"),
+                    (table_name,"ADD INDEX socios_cnpj_basico (cnpj_basico)")
                 ]
             },
             TipoDeArquivo::Simples => {
