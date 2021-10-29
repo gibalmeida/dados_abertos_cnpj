@@ -60,5 +60,9 @@ impl<'a> Config<'a> {
     pub fn drop_indexes(&self) -> bool {
         self.args.drop_indexes
     }
+
+    pub fn force(&self) -> bool {
+        self.args.force
+    }
 }
 

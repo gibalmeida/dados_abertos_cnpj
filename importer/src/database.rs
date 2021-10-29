@@ -363,6 +363,14 @@ impl<'a> Database<'a> {
             .execute(&self.db_connection)
     }    
 
+    pub fn fetch_arquivo_importado(&self,filename: &str) -> QueryResult<ArquivoImportado> {
+        use data_models::schema::arquivos_importados;
+
+        arquivos_importados::table
+            .filter(arquivos_importados::nome_do_arquivo.eq(filename))
+            .first::<ArquivoImportado>(&self.db_connection)
+    }
+
     fn establish_connection() -> MysqlConnection {
         dotenv().ok();
 

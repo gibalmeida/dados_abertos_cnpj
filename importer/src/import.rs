@@ -152,6 +152,11 @@ impl<'a> Import<'a> {
     pub fn run(&mut self, file: ZipFile) -> Result<(), String>  {
 
         let filename = &*file.name().to_owned();
+
+        if self.file_already_imported(filename) {
+            println!("Como o arquivo já foi importando anteriormente, vamos pular ele. Utilize --force para forçar a importação novamente.");
+            return Ok(()); // se for importação de um diretório, vai para o próximo aquivo; senão encerra.
+        }
     
         let rdr = csv::ReaderBuilder::new()
             .delimiter(b';')
@@ -206,6 +211,25 @@ impl<'a> Import<'a> {
         Ok(())
     }
 
+
+    fn file_already_imported(&self, filename: &str) -> bool {
+
+        match self.db.fetch_arquivo_importado(&filename) {
+            Ok(_arquivo) => {
+                match self.config.force() {
+                    true => {
+                        println!("O arquivo já foi importado anteriormente; mas, como o flag --force foi informado, vamos importá-lo novamente.");
+                        false
+                    },
+                    _ => true
+                    
+                }
+            },
+            _ => false
+ 
+        }
+
+    }
 
     fn import_empresas<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
         let mut raw_record = csv::ByteRecord::new();

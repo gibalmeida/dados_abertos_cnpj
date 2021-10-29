@@ -1,7 +1,5 @@
-use std::time::SystemTime;
-
 use bigdecimal::BigDecimal;
-use chrono::NaiveDate;
+use chrono::{NaiveDate, NaiveDateTime};
 use serde::Serialize;
 
 use super::schema::{empresas,estabelecimentos,cnaes,naturezas_juridicas,municipios,paises,qualificacoes_de_socios,motivos_de_situacoes_cadastrais,arquivos_importados,socios,simples};
@@ -190,7 +188,7 @@ pub struct ArquivoImportado {
     pub tabela: String,
     pub registros_processados: u32,
     pub tempo_decorrido_em_segundos: Option<u64>,
-    pub created_at: SystemTime,
+    pub created_at: NaiveDateTime,
 }
 
 

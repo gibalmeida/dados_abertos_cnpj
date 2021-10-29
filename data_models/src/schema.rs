@@ -4,7 +4,7 @@ table! {
         tabela -> Varchar,
         registros_processados -> Unsigned<Integer>,
         tempo_decorrido_em_segundos -> Nullable<Unsigned<Bigint>>,
-        created_at -> Nullable<Timestamp>,
+        created_at -> Timestamp,
     }
 }
 
