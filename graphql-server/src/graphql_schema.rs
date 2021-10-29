@@ -111,6 +111,128 @@ impl MotivoDeSituacaoCadastral {
 }
 
 #[derive(Queryable)]
+struct FaixaEtaria {
+    id: u8,
+    nome: Option<String>,
+}
+
+#[graphql_object(description = "Faixa Etária")]
+impl FaixaEtaria {
+    pub fn id(&self) -> i32 {
+        self.id.into()
+    }
+
+    pub fn nome(&self) -> &Option<String> {
+        &self.nome
+    }
+}
+
+#[derive(Queryable)]
+struct Socio {
+    id: u32,
+    cnpj_basico: String,
+    identificador_de_socio: u8,
+    nome_ou_razao_social_do_socio: String,
+    cnpj_ou_cpf_do_socio: Option<String>,
+    qualificacao_do_socio: u8,
+    data_de_entrada_na_sociedade: NaiveDate,
+    pais_do_socio: Option<u16>,
+    cpf_do_representante_legal: String,
+    nome_do_representante_legal: String,
+    qualificacao_do_representante_legal: u8,
+    faixa_etaria_do_socio: u8
+}
+
+#[juniper::graphql_object(context = Context, description="Sócio de uma empresa do CNPJ")]
+impl Socio {
+    pub fn id(&self) -> String {
+        self.id.to_string()
+    }
+
+    pub fn cnpj_basico(&self) -> &String {
+        &self.cnpj_basico
+    }
+
+    pub fn identificador_de_socio(&self) -> &str {
+        match self.identificador_de_socio {
+            1 => "Pessoa Jurídica",
+            2 => "Pessoa Física",
+            3 => "Estrangeiro",
+            _ => "",
+        }        
+    }
+
+    pub fn nome_ou_razao_social_do_socio(&self) -> &String {
+        &self.nome_ou_razao_social_do_socio
+    }
+
+    pub fn cnpj_ou_cpf_do_socio(&self) -> &Option<String> {
+        &self.cnpj_ou_cpf_do_socio
+    }
+
+    pub fn qualificacao_de_socio(&self, context: &Context) -> Result<Option<QualificacaoDeSocio>, FieldError> {
+        use data_models::schema::qualificacoes_de_socios;
+        let connection = context.pool.clone().get()?;
+
+        Ok(Some(
+            qualificacoes_de_socios::table
+                .filter(qualificacoes_de_socios::id.eq(&self.qualificacao_do_socio))
+                .first::<QualificacaoDeSocio>(&*connection)?,
+        ))
+    }
+
+    pub fn data_de_entrada_na_sociedade(&self) -> &NaiveDate {
+        &self.data_de_entrada_na_sociedade
+    }
+
+    pub fn pais_do_socio(&self, context: &Context) -> Result<Option<Pais>, FieldError> {
+        match self.pais_do_socio {
+            Some(v) => {
+                use data_models::schema::paises;
+                let connection = context.pool.clone().get()?;
+
+                Ok(Some(
+                    paises::table
+                        .filter(paises::id.eq(v))
+                        .first::<Pais>(&*connection)?,
+                ))
+            }
+            None => Ok(None),
+        }
+    }
+
+    pub fn cpf_do_representante_legal(&self) -> &String {
+        &self.cpf_do_representante_legal
+    }
+
+    pub fn nome_do_representante_legal(&self) -> &String {
+        &self.nome_do_representante_legal
+    }
+
+    pub fn qualificacao_do_representante_legal(&self, context: &Context) -> Result<Option<QualificacaoDeSocio>, FieldError> {
+        use data_models::schema::qualificacoes_de_socios;
+        let connection = context.pool.clone().get()?;
+
+        Ok(Some(
+            qualificacoes_de_socios::table
+                .filter(qualificacoes_de_socios::id.eq(&self.qualificacao_do_representante_legal))
+                .first::<QualificacaoDeSocio>(&*connection)?,
+        ))
+    }
+    
+
+    pub fn faixa_etaria_do_socio(&self, context: &Context) -> Result<Option<FaixaEtaria>, FieldError> {
+        use data_models::schema::faixas_etarias;
+        let connection = context.pool.clone().get()?;
+
+        Ok(Some(
+            faixas_etarias::table
+                .filter(faixas_etarias::id.eq(&self.faixa_etaria_do_socio))
+                .first::<FaixaEtaria>(&*connection)?,
+        ))
+    }}
+
+#[derive(Queryable)]
 // #[primary_key(cnpj_basico)]
 struct Empresa {
     cnpj_basico: String,
@@ -179,6 +301,24 @@ impl Empresa {
     pub fn ente_federativo_responsavel(&self) -> &Option<String> {
         &self.ente_federativo_responsavel
     }
+
+    pub fn socios(&self, context: &Context) -> Result<Vec<Socio>, FieldError> {
+        use data_models::schema::socios;
+        let connection = context.pool.clone().get()?;
+
+        Ok(socios::table
+            .filter(socios::cnpj_basico.eq(&self.cnpj_basico))
+            .load::<Socio>(&*connection)?)
+    }
+
+    pub fn estabelecimentos(&self, context: &Context) -> Result<Vec<Estabelecimento>, FieldError> {
+        use data_models::schema::estabelecimentos;
+        let connection = context.pool.clone().get()?;
+
+        Ok(estabelecimentos::table
+            .filter(estabelecimentos::cnpj_basico.eq(&self.cnpj_basico))
+            .load::<Estabelecimento>(&*connection)?)
+    }    
 }
 
 #[derive(Queryable)]
@@ -574,6 +714,16 @@ impl QueryRoot {
             .filter(estabelecimentos::cnpj_dv.eq(&cnpj_completo[12..]))
             .first::<Estabelecimento>(&*connection)?)
     }
+
+    fn socios(context: &Context, cnpj_basico: String) -> Result<Vec<Socio>, FieldError> {
+        use data_models::schema::socios;
+        let connection = context.pool.clone().get()?;
+
+        Ok(socios::table
+            .filter(socios::cnpj_basico.eq(cnpj_basico))
+            .load::<Socio>(&*connection)?)
+    }
+    
 }
 
 pub struct Context {

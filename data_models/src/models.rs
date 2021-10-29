@@ -234,6 +234,12 @@ pub struct NewSocio {
 }
 
 #[derive(Queryable)]
+pub struct FaixaEtaria {
+    pub id: u8,
+    pub nome: Option<String>,
+}
+
+#[derive(Queryable)]
 pub struct Simples {
     pub cnpj_basico: String,
     pub opcao_pelo_simples: String,
