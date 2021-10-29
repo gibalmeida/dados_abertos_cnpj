@@ -232,6 +232,58 @@ impl Socio {
         ))
     }}
 
+
+
+#[derive(Queryable)]
+struct Simples {
+    cnpj_basico: String,
+    opcao_pelo_simples: String,
+    data_de_opcao_pelo_simples: Option<NaiveDate>,
+    data_de_exclusao_do_simples: Option<NaiveDate>,
+    opcao_pelo_mei: String,
+    data_de_opcao_pelo_mei: Option<NaiveDate>,
+    data_de_exclusao_do_mei: Option<NaiveDate>,    
+}
+
+#[juniper::graphql_object(context = Context, description="Dados referente ao SIMPLES ou MEI")]
+impl Simples {
+    pub fn cnpj_basico(&self) -> &String {
+        &self.cnpj_basico
+    }
+
+    pub fn opcao_pelo_simples(&self) -> &str {
+        match &self.opcao_pelo_simples[..] {
+            "S" => "Sim",
+            "N" => "Não",
+            _ => "Outros"
+        }
+    }
+
+    pub fn data_de_opcao_pelo_simples(&self) -> &Option<NaiveDate> {
+        &self.data_de_opcao_pelo_simples
+    }
+
+    pub fn data_de_exclusao_do_simples(&self) -> &Option<NaiveDate> {
+        &self.data_de_exclusao_do_simples
+    }
+
+    pub fn opcao_pelo_mei(&self) -> &str {
+        match &self.opcao_pelo_mei[..] {
+            "S" => "Sim",
+            "N" => "Não",
+            _ => "Outros"
+        }
+    }
+
+    pub fn data_de_opcao_pelo_mei(&self) -> &Option<NaiveDate> {
+        &self.data_de_opcao_pelo_mei
+    }
+
+    pub fn data_de_exclusao_do_mei(&self) -> &Option<NaiveDate> {
+        &self.data_de_exclusao_do_mei
+    }
+
+}
 #[derive(Queryable)]
 // #[primary_key(cnpj_basico)]
 struct Empresa {
@@ -318,8 +370,16 @@ impl Empresa {
         Ok(estabelecimentos::table
             .filter(estabelecimentos::cnpj_basico.eq(&self.cnpj_basico))
             .load::<Estabelecimento>(&*connection)?)
-    }    
-}
+    }
+    
+    pub fn simples(&self, context: &Context) -> Result<Simples, FieldError> {
+        use data_models::schema::simples;
+        let connection = context.pool.clone().get()?;
+
+        Ok(simples::table
+            .filter(simples::cnpj_basico.eq(&self.cnpj_basico))
+            .first::<Simples>(&*connection)?)
+    }}
 
 #[derive(Queryable)]
 struct Estabelecimento {
@@ -723,6 +783,15 @@ impl QueryRoot {
             .filter(socios::cnpj_basico.eq(cnpj_basico))
             .load::<Socio>(&*connection)?)
     }
+
+    fn simples(context: &Context, cnpj_basico: String) -> Result<Simples, FieldError> {
+        use data_models::schema::simples;
+        let connection = context.pool.clone().get()?;
+
+        Ok(simples::table
+            .filter(simples::cnpj_basico.eq(cnpj_basico))
+            .first::<Simples>(&*connection)?)
+    }    
     
 }
 
