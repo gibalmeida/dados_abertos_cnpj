@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use csv::Reader;
 
-use chrono::NaiveDate;
+use chrono::{NaiveDate, TimeZone, Utc, Local};
 use encoding::{Encoding, DecoderTrap};
 use encoding::all::ISO_8859_15;
 use serde_derive::Deserialize;
@@ -149,7 +149,7 @@ impl<'a> Import<'a> {
         Import { config, db, start_time, num_records: 0 }
     }
 
-    pub fn run(&mut self, file: ZipFile) -> Result<(), String>  {
+    pub fn run(&mut self, mut file: ZipFile) -> Result<(), String>  {
 
         let filename = &*file.name().to_owned();
 
@@ -161,7 +161,7 @@ impl<'a> Import<'a> {
         let rdr = csv::ReaderBuilder::new()
             .delimiter(b';')
             .has_headers(false)
-            .from_reader(file);
+            .from_reader(&mut file);
     
         self.db.before_table_update();
 
@@ -186,17 +186,43 @@ impl<'a> Import<'a> {
                 self.db.after_table_update();
 
                 let duration_in_seconds = self.duration_in_seconds();
-                let arquivo_importado = NewArquivoImportado{
-                    nome_do_arquivo: filename,
-                    tabela: self.config.tipo_de_arquivo().table_name(),
-                    tempo_decorrido_em_segundos: Some(duration_in_seconds),
-                    registros_processados: self.num_records as u32,
-                };
 
-                self.db
-                    .upsert_arquivo_importado(&arquivo_importado)
-                    .expect(&format!("Erro ao inserir registros na tabela de arquivos importados!"));
-                self.db.commit();
+                {
+                    let arquivo_importado = NewArquivoImportado{
+                        nome_do_arquivo: filename,
+                        tabela: self.config.tipo_de_arquivo().table_name(),
+                        tempo_decorrido_em_segundos: Some(duration_in_seconds),
+                        registros_processados: self.num_records as u32,
+                    };
+
+                    self.db
+                        .upsert_arquivo_importado(&arquivo_importado)
+                        .expect(&format!("Erro ao inserir registros na tabela de arquivos importados!"));
+                    self.db.commit();
+
+                }
+
+                {
+                    let lm = &file.last_modified();
+                    let lm_local = Local
+                        .ymd(lm.year().into(), lm.month().into(), lm.day().into())
+                        .and_hms(lm.hour().into(), lm.minute().into(), lm.second().into());
+                    let lm_utc = Utc.from_local_datetime(&lm_local.naive_local()).unwrap().naive_utc();
+
+
+                    let metadados_das_tabelas = NewMetadadosDasTabelas {
+                        tabela: self.config.tipo_de_arquivo().table_name(),
+                        data_hora_de_atualizacao: lm_utc,
+                        data_hora_de_importacao: Utc::now().naive_utc(),
+                    };
+
+                    self.db
+                        .upsert_metadados_das_tabelas(&metadados_das_tabelas)
+                        .expect(&format!("Erro ao inserir registros na tabela de metadados das tabelas!"));     
+
+                    self.db.commit();
+                }
+
 
                 if duration_in_seconds == 0 {
                     println!("{} registros importados em {} milissegundos: {} registros/segundo", self.num_records, self.duration_in_millis(), self.records_per_seconds() );

@@ -1,0 +1,1 @@
+DROP TABLE metadados_das_tabelas

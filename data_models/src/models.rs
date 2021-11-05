@@ -2,7 +2,7 @@ use bigdecimal::BigDecimal;
 use chrono::{NaiveDate, NaiveDateTime};
 use serde::Serialize;
 
-use super::schema::{empresas,estabelecimentos,cnaes,naturezas_juridicas,municipios,paises,qualificacoes_de_socios,motivos_de_situacoes_cadastrais,arquivos_importados,socios,simples};
+use super::schema::{empresas,estabelecimentos,cnaes,naturezas_juridicas,municipios,paises,qualificacoes_de_socios,motivos_de_situacoes_cadastrais,arquivos_importados,socios,simples,metadados_das_tabelas};
 
 #[derive(Identifiable, Queryable, Serialize)]
 #[primary_key(cnpj_basico)]
@@ -260,4 +260,20 @@ pub struct NewSimples {
     pub opcao_pelo_mei: String,
     pub data_de_opcao_pelo_mei: Option<NaiveDate>,
     pub data_de_exclusao_do_mei: Option<NaiveDate>,
+}
+
+#[derive(Queryable)]
+pub struct MetadadosDasTabelas {
+    pub tabela: String,
+    pub data_hora_de_atualizacao: NaiveDateTime,
+    pub data_hora_de_importacao: NaiveDateTime,
+}
+
+
+#[derive(Insertable)]
+#[table_name="metadados_das_tabelas"]
+pub struct NewMetadadosDasTabelas<'a> {
+    pub tabela: &'a str,
+    pub data_hora_de_atualizacao: NaiveDateTime,
+    pub data_hora_de_importacao: NaiveDateTime,
 }

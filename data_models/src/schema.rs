@@ -70,6 +70,14 @@ table! {
 }
 
 table! {
+    metadados_das_tabelas (tabela) {
+        tabela -> Varchar,
+        data_hora_de_atualizacao -> Timestamp,
+        data_hora_de_importacao -> Timestamp,
+    }
+}
+
+table! {
     motivos_de_situacoes_cadastrais (id) {
         id -> Unsigned<Tinyint>,
         nome -> Varchar,
@@ -155,6 +163,7 @@ allow_tables_to_appear_in_same_query!(
     empresas,
     estabelecimentos,
     faixas_etarias,
+    metadados_das_tabelas,
     motivos_de_situacoes_cadastrais,
     municipios,
     naturezas_juridicas,

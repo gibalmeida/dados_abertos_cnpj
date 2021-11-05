@@ -373,6 +373,17 @@ impl<'a> Database<'a> {
             .first::<ArquivoImportado>(&self.db_connection)
     }
 
+    pub fn upsert_metadados_das_tabelas(
+        &self,
+        new_record: &NewMetadadosDasTabelas,
+    ) -> QueryResult<usize> {
+        use data_models::schema::metadados_das_tabelas;
+
+        diesel::replace_into(metadados_das_tabelas::table)
+            .values(new_record)
+            .execute(&self.db_connection)
+    }   
+
     fn establish_connection() -> MysqlConnection {
         dotenv().ok();
 
