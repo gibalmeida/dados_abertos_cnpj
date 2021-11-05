@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use csv::Reader;
 
-use chrono::{NaiveDate, TimeZone, Utc, Local};
+use chrono::{FixedOffset, Local, NaiveDate, TimeZone, Utc};
 use encoding::{Encoding, DecoderTrap};
 use encoding::all::ISO_8859_15;
 use serde_derive::Deserialize;
@@ -204,15 +204,14 @@ impl<'a> Import<'a> {
 
                 {
                     let lm = &file.last_modified();
-                    let lm_local = Local
+                    let lm = FixedOffset::west(3*3600)
                         .ymd(lm.year().into(), lm.month().into(), lm.day().into())
-                        .and_hms(lm.hour().into(), lm.minute().into(), lm.second().into());
-                    let lm_utc = Utc.from_local_datetime(&lm_local.naive_local()).unwrap().naive_utc();
+                        .and_hms(lm.hour().into(), lm.minute().into(), lm.second().into()).naive_utc();
 
 
                     let metadados_das_tabelas = NewMetadadosDasTabelas {
                         tabela: self.config.tipo_de_arquivo().table_name(),
-                        data_hora_de_atualizacao: lm_utc,
+                        data_hora_de_atualizacao: lm,
                         data_hora_de_importacao: Utc::now().naive_utc(),
                     };
 
