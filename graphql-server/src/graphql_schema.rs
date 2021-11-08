@@ -1,12 +1,24 @@
 extern crate dotenv;
 
-use chrono::NaiveDate;
+use chrono::{DateTime, FixedOffset, Local, NaiveDate};
 use diesel::mysql::MysqlConnection;
 use diesel::prelude::*;
 
 use juniper::{EmptyMutation, EmptySubscription, FieldError, RootNode};
 
 use bigdecimal::{BigDecimal, ToPrimitive};
+
+pub fn data_hora_de_atualizacao(context: &Context, table_name: &str) -> Result<String, FieldError> {
+    use data_models::schema::metadados_das_tabelas;
+    let connection = context.pool.clone().get()?;
+
+    let metadados_das_tabelas = metadados_das_tabelas::table
+        .filter(metadados_das_tabelas::tabela.eq(&table_name))
+        .first::<data_models::models::MetadadosDasTabelas>(&*connection)?;
+    let data_hora_de_atualizacao = DateTime::<Local>::from_utc(metadados_das_tabelas.data_hora_de_atualizacao, FixedOffset::west(3*3600)).format("%Y-%m-%d %H:%M:%S").to_string();
+
+    Ok(data_hora_de_atualizacao)
+} 
 
 #[derive(Queryable)]
 struct CNAE {
@@ -230,7 +242,12 @@ impl Socio {
                 .filter(faixas_etarias::id.eq(&self.faixa_etaria_do_socio))
                 .first::<FaixaEtaria>(&*connection)?,
         ))
-    }}
+    }
+
+    pub fn data_hora_de_atualizacao(&self, context: &Context) -> Result<String, FieldError> {
+        data_hora_de_atualizacao(context, "socios")
+    }
+}
 
 
 
@@ -281,6 +298,10 @@ impl Simples {
 
     pub fn data_de_exclusao_do_mei(&self) -> &Option<NaiveDate> {
         &self.data_de_exclusao_do_mei
+    }
+
+    pub fn data_hora_de_atualizacao(&self, context: &Context) -> Result<String, FieldError> {
+        data_hora_de_atualizacao(context, "simples")
     }
 
 }
@@ -379,7 +400,12 @@ impl Empresa {
         Ok(simples::table
             .filter(simples::cnpj_basico.eq(&self.cnpj_basico))
             .first::<Simples>(&*connection)?)
-    }}
+    }
+
+    pub fn data_hora_de_atualizacao(&self, context: &Context) -> Result<String, FieldError> {
+        data_hora_de_atualizacao(context, "empresas")
+    }    
+}
 
 #[derive(Queryable)]
 struct Estabelecimento {
@@ -622,6 +648,10 @@ impl Estabelecimento {
         Ok(empresas::table
             .filter(empresas::cnpj_basico.eq(&self.cnpj_basico))
             .first::<Empresa>(&*connection)?)
+    }
+
+    pub fn data_hora_de_atualizacao(&self, context: &Context) -> Result<String, FieldError> {
+        data_hora_de_atualizacao(context, "estabelecimentos")
     }
 }
 
