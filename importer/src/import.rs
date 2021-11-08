@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use csv::Reader;
 
-use chrono::{FixedOffset, Local, NaiveDate, TimeZone, Utc};
+use chrono::{FixedOffset, NaiveDate, TimeZone, Utc};
 use encoding::{Encoding, DecoderTrap};
 use encoding::all::ISO_8859_15;
 use serde_derive::Deserialize;
@@ -203,6 +203,8 @@ impl<'a> Import<'a> {
                 }
 
                 {
+                    // pega a data e hora de modificação do arquivo que se encontra dentro do arquivo ZIP
+                    // e converte para horário UTC (considerando que esta data/hora do arquivo é GMT-3)
                     let lm = &file.last_modified();
                     let lm = FixedOffset::west(3*3600)
                         .ymd(lm.year().into(), lm.month().into(), lm.day().into())
