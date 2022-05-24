@@ -1,24 +1,21 @@
-
-use std::io::{self, Write};
 use std::error::Error;
+use std::io::{self, Write};
 use std::str::FromStr;
 use std::time::Instant;
 
 use csv::Reader;
 
-use chrono::{FixedOffset, NaiveDate, TimeZone, Utc};
-use encoding::{Encoding, DecoderTrap};
-use encoding::all::ISO_8859_15;
-use serde_derive::Deserialize;
 use bigdecimal::BigDecimal;
+use chrono::{FixedOffset, NaiveDate, TimeZone, Utc};
+use encoding::all::ISO_8859_15;
+use encoding::{DecoderTrap, Encoding};
+use serde_derive::Deserialize;
 use zip::read::ZipFile;
 
-use crate::tipo_de_arquivo::TipoDeArquivo;
 use crate::config::Config;
 use crate::database::Database;
+use crate::tipo_de_arquivo::TipoDeArquivo;
 use data_models::models::*;
-
-
 
 // nos campos razao_social e ente_federativo_responsavel foi necessario o uso do serde_bytes
 // porque os arquivos da receita estão no formato ISO-8859-15, e o Rust não aceita String
@@ -32,9 +29,9 @@ struct EmpresaCsvRecord<'a> {
     qualificacao_do_responsavel: u8,
     capital_social_da_empresa: String,
     porte_da_empresa: &'a [u8], // não pode ser i32, porque em alguns registros o campo está em branco e isto geraria um erro ao fazer o parse para integer.
-    //gambiarra 
+    //gambiarra
     #[serde(with = "serde_bytes")]
-    ente_federativo_responsavel: &'a [u8]
+    ente_federativo_responsavel: &'a [u8],
 }
 
 #[derive(Debug, Deserialize)]
@@ -52,7 +49,7 @@ struct EstabelecimentoCsvRecord<'a> {
     nome_da_cidade_no_exterior: &'a [u8],
     #[serde(deserialize_with = "csv::invalid_option")]
     pais: Option<u16>,
-    data_de_inicio_da_atividade:Option<String>,
+    data_de_inicio_da_atividade: Option<String>,
     #[serde(deserialize_with = "csv::invalid_option")]
     cnae_fiscal_principal: Option<u32>,
     #[serde(deserialize_with = "csv::invalid_option")]
@@ -86,7 +83,7 @@ struct EstabelecimentoCsvRecord<'a> {
     #[serde(with = "serde_bytes")]
     correio_eletronico: &'a [u8],
     situacao_especial: Option<String>,
-    data_situacao_especial: Option<String>,    
+    data_situacao_especial: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -103,7 +100,7 @@ struct SocioCsvRecord<'a> {
     #[serde(with = "serde_bytes")]
     nome_do_representante_legal: &'a [u8],
     qualificacao_do_representante_legal: u8,
-    faixa_etaria_do_socio: u8,    
+    faixa_etaria_do_socio: u8,
 }
 
 #[derive(Debug, Deserialize)]
@@ -118,20 +115,17 @@ struct SimplesCsvRecord {
 }
 
 fn naive_date_from_str(date_option: Option<String>) -> Option<NaiveDate> {
-
-
     let date_str = match date_option {
         Some(v) => v,
-        None => return None
+        None => return None,
     };
 
     let parsed_date = NaiveDate::parse_from_str(&date_str, "%Y%m%d");
 
     match parsed_date {
         Ok(v) => Some(v),
-        Err(_e) => None
+        Err(_e) => None,
     }
-
 }
 pub struct Import<'a> {
     config: &'a Config<'a>,
@@ -142,31 +136,33 @@ pub struct Import<'a> {
 
 impl<'a> Import<'a> {
     pub fn new(config: &'a Config<'a>) -> Import<'a> {
-
         let db = Database::new(&config);
         let start_time = Instant::now();
 
-        Import { config, db, start_time, num_records: 0 }
+        Import {
+            config,
+            db,
+            start_time,
+            num_records: 0,
+        }
     }
 
-    pub fn run(&mut self, mut file: ZipFile) -> Result<(), String>  {
-
+    pub fn run(&mut self, mut file: ZipFile) -> Result<(), String> {
         let filename = &*file.name().to_owned();
 
         if self.file_already_imported(filename) {
             println!("Como o arquivo já foi importando anteriormente, vamos pular ele. Utilize --force para forçar a importação novamente.");
             return Ok(()); // se for importação de um diretório, vai para o próximo aquivo; senão encerra.
         }
-    
+
         let rdr = csv::ReaderBuilder::new()
             .delimiter(b';')
             .has_headers(false)
             .from_reader(&mut file);
-    
+
         self.db.before_table_update();
 
-        let mut import_table = |rdr| {
-            match self.config.tipo_de_arquivo() {
+        let mut import_table = |rdr| match self.config.tipo_de_arquivo() {
             TipoDeArquivo::Empresas => self.import_empresas(rdr),
             TipoDeArquivo::Estabelecimentos => self.import_estabelecimentos(rdr),
             TipoDeArquivo::CNAES => self.import_cnaes(rdr),
@@ -174,21 +170,21 @@ impl<'a> Import<'a> {
             TipoDeArquivo::QualificacoesDeSocios => self.import_qualificacoes_de_socios(rdr),
             TipoDeArquivo::Paises => self.import_paises(rdr),
             TipoDeArquivo::Municipios => self.import_municipios(rdr),
-            TipoDeArquivo::MotivosDeSituacoesCadastrais => self.import_motivos_de_situacoes_cadastrais(rdr),
+            TipoDeArquivo::MotivosDeSituacoesCadastrais => {
+                self.import_motivos_de_situacoes_cadastrais(rdr)
+            }
             TipoDeArquivo::Simples => self.import_simples(rdr),
             TipoDeArquivo::Socios => self.import_socios(rdr),
-            }
         };
-        
+
         match import_table(rdr) {
             Ok(()) => {
-
                 self.db.after_table_update();
 
                 let duration_in_seconds = self.duration_in_seconds();
 
                 {
-                    let arquivo_importado = NewArquivoImportado{
+                    let arquivo_importado = NewArquivoImportado {
                         nome_do_arquivo: filename,
                         tabela: self.config.tipo_de_arquivo().table_name(),
                         tempo_decorrido_em_segundos: Some(duration_in_seconds),
@@ -197,19 +193,20 @@ impl<'a> Import<'a> {
 
                     self.db
                         .upsert_arquivo_importado(&arquivo_importado)
-                        .expect(&format!("Erro ao inserir registros na tabela de arquivos importados!"));
+                        .expect(&format!(
+                            "Erro ao inserir registros na tabela de arquivos importados!"
+                        ));
                     self.db.commit();
-
                 }
 
                 {
                     // pega a data e hora de modificação do arquivo que se encontra dentro do arquivo ZIP
                     // e converte para horário UTC (considerando que esta data/hora do arquivo é GMT-3)
                     let lm = &file.last_modified();
-                    let lm = FixedOffset::west(3*3600)
+                    let lm = FixedOffset::west(3 * 3600)
                         .ymd(lm.year().into(), lm.month().into(), lm.day().into())
-                        .and_hms(lm.hour().into(), lm.minute().into(), lm.second().into()).naive_utc();
-
+                        .and_hms(lm.hour().into(), lm.minute().into(), lm.second().into())
+                        .naive_utc();
 
                     let metadados_das_tabelas = NewMetadadosDasTabelas {
                         tabela: self.config.tipo_de_arquivo().table_name(),
@@ -219,105 +216,159 @@ impl<'a> Import<'a> {
 
                     self.db
                         .upsert_metadados_das_tabelas(&metadados_das_tabelas)
-                        .expect(&format!("Erro ao inserir registros na tabela de metadados das tabelas!"));     
+                        .expect(&format!(
+                            "Erro ao inserir registros na tabela de metadados das tabelas!"
+                        ));
 
                     self.db.commit();
                 }
 
-
                 if duration_in_seconds == 0 {
-                    println!("{} registros importados em {} milissegundos: {} registros/segundo", self.num_records, self.duration_in_millis(), self.records_per_seconds() );
+                    println!(
+                        "{} registros importados em {} milissegundos: {} registros/segundo",
+                        self.num_records,
+                        self.duration_in_millis(),
+                        self.records_per_seconds()
+                    );
                 } else {
-                    println!("{} registros importados em {} segundos: {} registros/segundo", self.num_records, duration_in_seconds, self.records_per_seconds());
+                    println!(
+                        "{} registros importados em {} segundos: {} registros/segundo",
+                        self.num_records,
+                        duration_in_seconds,
+                        self.records_per_seconds()
+                    );
                 }
-
-            },
-            Err(err) =>return Err(format!("Erro ao executar: {}", err))
-        } 
+            }
+            Err(err) => return Err(format!("Erro ao executar: {}", err)),
+        }
 
         Ok(())
     }
 
-
     fn file_already_imported(&self, filename: &str) -> bool {
-
         match self.db.fetch_arquivo_importado(&filename) {
-            Ok(_arquivo) => {
-                match self.config.force() {
-                    true => {
-                        println!("O arquivo já foi importado anteriormente; mas, como o flag --force foi informado, vamos importá-lo novamente.");
-                        false
-                    },
-                    _ => true
-                    
+            Ok(_arquivo) => match self.config.force() {
+                true => {
+                    println!("O arquivo já foi importado anteriormente; mas, como o flag --force foi informado, vamos importá-lo novamente.");
+                    false
                 }
+                _ => true,
             },
-            _ => false
- 
+            _ => false,
         }
-
     }
 
-    fn import_empresas<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
+    fn import_empresas<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>>
+    where
+        R: io::Read,
+    {
         let mut raw_record = csv::ByteRecord::new();
         let mut records: Vec<NewEmpresa> = Vec::with_capacity(self.config.rows_per_insert());
 
         while rdr.read_byte_record(&mut raw_record)? {
-
-            let record: EmpresaCsvRecord = raw_record.deserialize(None)
-                .expect(&format!("Erro ao deserializar o seguinte registro: {:?}", raw_record));
+            let record: EmpresaCsvRecord = raw_record.deserialize(None).expect(&format!(
+                "Erro ao deserializar o seguinte registro: {:?}",
+                raw_record
+            ));
             let razao_social = ISO_8859_15.decode(record.razao_social, DecoderTrap::Strict)?;
-            let ente_federativo_responsavel = ISO_8859_15.decode(record.ente_federativo_responsavel, DecoderTrap::Strict)?;
+            let ente_federativo_responsavel =
+                ISO_8859_15.decode(record.ente_federativo_responsavel, DecoderTrap::Strict)?;
             let porte_da_empresa = match std::str::from_utf8(record.porte_da_empresa) {
                 Ok(v) => v.to_string(),
                 Err(_e) => "ER".to_string(),
             };
 
-            records.push(NewEmpresa {
-                cnpj_basico: record.cnpj_basico,
-                razao_social,
-                natureza_juridica: Some(record.natureza_juridica),
-                qualificacao_do_responsavel: Some(record.qualificacao_do_responsavel),
-                capital_social: Some(BigDecimal::from_str(&record.capital_social_da_empresa.replacen(",",".",1)).unwrap()), // arrumar a conversão aqui
-                porte: Some(porte_da_empresa),
-                ente_federativo_responsavel: Some(ente_federativo_responsavel)
-            });
+            if !razao_social.is_empty() {
+                // se a Razão Social estiver em branco o registro é inválido
 
-            self.num_records+=1;
+                records.push(NewEmpresa {
+                    cnpj_basico: record.cnpj_basico,
+                    razao_social,
+                    natureza_juridica: Some(record.natureza_juridica),
+                    qualificacao_do_responsavel: Some(record.qualificacao_do_responsavel),
+                    capital_social: Some(
+                        BigDecimal::from_str(
+                            &record.capital_social_da_empresa.replacen(",", ".", 1),
+                        )
+                        .unwrap(),
+                    ), // arrumar a conversão aqui
+                    porte: Some(porte_da_empresa),
+                    ente_federativo_responsavel: Some(ente_federativo_responsavel),
+                });
+                self.num_records += 1;
+            }
 
             if records.len() == self.config.rows_per_insert() {
-                self.db.upsert_empresa(&records)
+                self.db
+                    .upsert_empresa(&records)
                     .expect(&format!("Erro ao inserir registros na tabela de empresas!"));
                 records.clear();
                 self.show_progress();
             }
-
         }
-        self.db.upsert_empresa(&records)
+        self.db
+            .upsert_empresa(&records)
             .expect(&format!("Erro ao inserir registros na tabela de empresas!"));
-                
+
         Ok(())
     }
 
-    fn import_estabelecimentos<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
+    fn import_estabelecimentos<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>>
+    where
+        R: io::Read,
+    {
         let mut raw_record = csv::ByteRecord::new();
 
-        let mut records: Vec<NewEstabelecimento> = Vec::with_capacity(self.config.rows_per_insert());
+        let mut records: Vec<NewEstabelecimento> =
+            Vec::with_capacity(self.config.rows_per_insert());
 
         while rdr.read_byte_record(&mut raw_record)? {
+            let record: EstabelecimentoCsvRecord = raw_record.deserialize(None).expect(&format!(
+                "Erro ao deserializar o seguinte registro: {:?}",
+                raw_record
+            ));
+            let nome_fantasia = Some(
+                ISO_8859_15
+                    .decode(record.nome_fantasia, DecoderTrap::Strict)
+                    .unwrap(),
+            );
+            let nome_da_cidade_no_exterior = Some(
+                ISO_8859_15
+                    .decode(record.nome_da_cidade_no_exterior, DecoderTrap::Strict)
+                    .unwrap(),
+            );
+            let logradouro = Some(
+                ISO_8859_15
+                    .decode(record.logradouro, DecoderTrap::Strict)
+                    .unwrap(),
+            );
+            let bairro = Some(
+                ISO_8859_15
+                    .decode(record.bairro, DecoderTrap::Strict)
+                    .unwrap(),
+            );
+            let complemento = Some(
+                ISO_8859_15
+                    .decode(record.complemento, DecoderTrap::Strict)
+                    .unwrap(),
+            );
+            let tipo_logradouro = Some(
+                ISO_8859_15
+                    .decode(record.tipo_logradouro, DecoderTrap::Strict)
+                    .unwrap(),
+            );
+            let numero = Some(
+                ISO_8859_15
+                    .decode(record.numero, DecoderTrap::Strict)
+                    .unwrap(),
+            );
+            let correio_eletronico = Some(
+                ISO_8859_15
+                    .decode(record.correio_eletronico, DecoderTrap::Strict)
+                    .unwrap(),
+            );
 
-            let record: EstabelecimentoCsvRecord = raw_record.deserialize(None)
-                .expect(&format!("Erro ao deserializar o seguinte registro: {:?}", raw_record));
-            let nome_fantasia = Some(ISO_8859_15.decode(record.nome_fantasia, DecoderTrap::Strict).unwrap());
-            let nome_da_cidade_no_exterior = Some(ISO_8859_15.decode(record.nome_da_cidade_no_exterior, DecoderTrap::Strict).unwrap());
-            let logradouro = Some(ISO_8859_15.decode(record.logradouro, DecoderTrap::Strict).unwrap());
-            let bairro = Some(ISO_8859_15.decode(record.bairro, DecoderTrap::Strict).unwrap());
-            let complemento = Some(ISO_8859_15.decode(record.complemento, DecoderTrap::Strict).unwrap());
-            let tipo_logradouro = Some(ISO_8859_15.decode(record.tipo_logradouro, DecoderTrap::Strict).unwrap());
-            let numero = Some(ISO_8859_15.decode(record.numero, DecoderTrap::Strict).unwrap());
-            let correio_eletronico = Some(ISO_8859_15.decode(record.correio_eletronico, DecoderTrap::Strict).unwrap());
-
-            records.push( NewEstabelecimento {
+            records.push(NewEstabelecimento {
                 cnpj_basico: record.cnpj_basico,
                 cnpj_ordem: record.cnpj_ordem,
                 cnpj_dv: record.cnpj_dv,
@@ -328,7 +379,9 @@ impl<'a> Import<'a> {
                 motivo_situacao_cadastral: record.motivo_situacao_cadastral,
                 nome_da_cidade_no_exterior,
                 pais: record.pais,
-                data_de_inicio_da_atividade: naive_date_from_str(record.data_de_inicio_da_atividade),
+                data_de_inicio_da_atividade: naive_date_from_str(
+                    record.data_de_inicio_da_atividade,
+                ),
                 cnae_fiscal_principal: record.cnae_fiscal_principal,
                 cnae_fiscal_secundaria: record.cnae_fiscal_secundaria,
                 tipo_logradouro,
@@ -347,84 +400,102 @@ impl<'a> Import<'a> {
                 telefone_fax: record.telefone_fax,
                 correio_eletronico,
                 situacao_especial: record.situacao_especial,
-                data_situacao_especial: naive_date_from_str(record.data_situacao_especial)
-
+                data_situacao_especial: naive_date_from_str(record.data_situacao_especial),
             });
 
             self.num_records += 1;
 
             if records.len() == self.config.rows_per_insert() {
-                self.db.upsert_estabelecimento(&records)
-                    .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
+                self.db.upsert_estabelecimento(&records).expect(&format!(
+                    "Erro ao inserir registros na tabela de estabelecimentos!"
+                ));
                 records.clear();
                 self.show_progress();
             }
-
         }
 
-        self.db.upsert_estabelecimento(&records)
-                    .expect(&format!("Erro ao inserir registros na tabela de estabelecimentos!"));
+        self.db.upsert_estabelecimento(&records).expect(&format!(
+            "Erro ao inserir registros na tabela de estabelecimentos!"
+        ));
 
         Ok(())
     }
-    
-    fn import_socios<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
+
+    fn import_socios<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>>
+    where
+        R: io::Read,
+    {
         let mut raw_record = csv::ByteRecord::new();
 
         let mut records: Vec<NewSocio> = Vec::with_capacity(self.config.rows_per_insert());
 
         while rdr.read_byte_record(&mut raw_record)? {
+            let record: SocioCsvRecord = raw_record.deserialize(None).expect(&format!(
+                "Erro ao deserializar o seguinte registro: {:?}",
+                raw_record
+            ));
 
-            let record: SocioCsvRecord = raw_record.deserialize(None)
-                .expect(&format!("Erro ao deserializar o seguinte registro: {:?}", raw_record));
-
-            records.push( NewSocio {
+            records.push(NewSocio {
                 cnpj_basico: record.cnpj_basico,
                 identificador_de_socio: record.identificador_de_socio,
-                nome_ou_razao_social_do_socio: ISO_8859_15.decode(record.nome_ou_razao_social_do_socio, DecoderTrap::Strict).unwrap(),
+                nome_ou_razao_social_do_socio: ISO_8859_15
+                    .decode(record.nome_ou_razao_social_do_socio, DecoderTrap::Strict)
+                    .unwrap(),
                 cnpj_ou_cpf_do_socio: record.cnpj_ou_cpf_do_socio,
                 qualificacao_do_socio: record.qualificacao_do_socio,
-                data_de_entrada_na_sociedade: NaiveDate::parse_from_str(&record.data_de_entrada_na_sociedade, "%Y%m%d").unwrap(),
+                data_de_entrada_na_sociedade: NaiveDate::parse_from_str(
+                    &record.data_de_entrada_na_sociedade,
+                    "%Y%m%d",
+                )
+                .unwrap(),
                 pais_do_socio: record.pais_do_socio,
                 cpf_do_representante_legal: record.cpf_do_representante_legal,
-                nome_do_representante_legal: ISO_8859_15.decode(record.nome_do_representante_legal, DecoderTrap::Strict).unwrap(),
+                nome_do_representante_legal: ISO_8859_15
+                    .decode(record.nome_do_representante_legal, DecoderTrap::Strict)
+                    .unwrap(),
                 qualificacao_do_representante_legal: record.qualificacao_do_representante_legal,
-                faixa_etaria_do_socio: record.faixa_etaria_do_socio,  
-
+                faixa_etaria_do_socio: record.faixa_etaria_do_socio,
             });
 
             self.num_records += 1;
 
             if records.len() == self.config.rows_per_insert() {
-                self.db.upsert_socio(&records)
+                self.db
+                    .upsert_socio(&records)
                     .expect(&format!("Erro ao inserir registros na tabela de socios!"));
                 records.clear();
                 self.show_progress();
             }
-
         }
 
-        self.db.upsert_socio(&records)
-                    .expect(&format!("Erro ao inserir registros na tabela de socios!"));
+        self.db
+            .upsert_socio(&records)
+            .expect(&format!("Erro ao inserir registros na tabela de socios!"));
 
         Ok(())
     }
 
-    fn import_simples<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
+    fn import_simples<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>>
+    where
+        R: io::Read,
+    {
         let mut raw_record = csv::ByteRecord::new();
 
         let mut records: Vec<NewSimples> = Vec::with_capacity(self.config.rows_per_insert());
 
         while rdr.read_byte_record(&mut raw_record)? {
+            let record: SimplesCsvRecord = raw_record.deserialize(None).expect(&format!(
+                "Erro ao deserializar o seguinte registro: {:?}",
+                raw_record
+            ));
 
-            let record: SimplesCsvRecord = raw_record.deserialize(None)
-                .expect(&format!("Erro ao deserializar o seguinte registro: {:?}", raw_record));
-
-            records.push( NewSimples {
+            records.push(NewSimples {
                 cnpj_basico: record.cnpj_basico,
                 opcao_pelo_simples: record.opcao_pelo_simples,
                 data_de_opcao_pelo_simples: naive_date_from_str(record.data_de_opcao_pelo_simples),
-                data_de_exclusao_do_simples: naive_date_from_str(record.data_de_exclusao_do_simples),
+                data_de_exclusao_do_simples: naive_date_from_str(
+                    record.data_de_exclusao_do_simples,
+                ),
                 opcao_pelo_mei: record.opcao_pelo_mei,
                 data_de_opcao_pelo_mei: naive_date_from_str(record.data_de_opcao_pelo_mei),
                 data_de_exclusao_do_mei: naive_date_from_str(record.data_de_exclusao_do_mei),
@@ -433,142 +504,177 @@ impl<'a> Import<'a> {
             self.num_records += 1;
 
             if records.len() == self.config.rows_per_insert() {
-                self.db.upsert_simples(&records)
+                self.db
+                    .upsert_simples(&records)
                     .expect(&format!("Erro ao inserir registros na tabela do simples!"));
                 records.clear();
                 self.show_progress();
             }
-
         }
 
-        self.db.upsert_simples(&records)
-                    .expect(&format!("Erro ao inserir registros na tabela do simples!"));
+        self.db
+            .upsert_simples(&records)
+            .expect(&format!("Erro ao inserir registros na tabela do simples!"));
 
         Ok(())
     }
 
-    fn import_cnaes<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
+    fn import_cnaes<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>>
+    where
+        R: io::Read,
+    {
         let mut raw_record = csv::ByteRecord::new();
 
         while rdr.read_byte_record(&mut raw_record)? {
-            let id: u32 = std::str::from_utf8(&raw_record[0]).unwrap().parse().unwrap();
-            let nome =  ISO_8859_15.decode(&raw_record[1], DecoderTrap::Strict)?;
-            let record = NewCNAE {
-                id,
-                nome,
-            };
+            let id: u32 = std::str::from_utf8(&raw_record[0])
+                .unwrap()
+                .parse()
+                .unwrap();
+            let nome = ISO_8859_15.decode(&raw_record[1], DecoderTrap::Strict)?;
+            let record = NewCNAE { id, nome };
 
-            self.db.upsert_cnae(&record)
-            .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&record));
-
-            self.num_records += 1;
-            self.show_progress();
-            
-        }
-        Ok(())
-    }  
-    
-    fn import_naturezas_juridicas<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
-        let mut raw_record = csv::ByteRecord::new();
-
-        while rdr.read_byte_record(&mut raw_record)? {
-            let id: u16 = std::str::from_utf8(&raw_record[0]).unwrap().parse().unwrap();
-            let nome =  ISO_8859_15.decode(&raw_record[1], DecoderTrap::Strict)?;
-            let record = NewNaturezaJuridica {
-                id,
-                nome,
-            };
-
-            self.db.upsert_natureza_juridica(&record)
-                .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&record));
+            self.db.upsert_cnae(&record).expect(&format!(
+                "Erro ao inserir o seguinte registro: {:?}",
+                &record
+            ));
 
             self.num_records += 1;
             self.show_progress();
-            
         }
         Ok(())
     }
 
-    fn import_qualificacoes_de_socios<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
+    fn import_naturezas_juridicas<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>>
+    where
+        R: io::Read,
+    {
         let mut raw_record = csv::ByteRecord::new();
 
         while rdr.read_byte_record(&mut raw_record)? {
-            let id: u8 = std::str::from_utf8(&raw_record[0]).unwrap().parse().unwrap();
-            let nome =  ISO_8859_15.decode(&raw_record[1], DecoderTrap::Strict)?;
-            let record = NewQualificacaoDeSocio {
-                id,
-                nome,
-            };
+            let id: u16 = std::str::from_utf8(&raw_record[0])
+                .unwrap()
+                .parse()
+                .unwrap();
+            let nome = ISO_8859_15.decode(&raw_record[1], DecoderTrap::Strict)?;
+            let record = NewNaturezaJuridica { id, nome };
 
-            self.db.upsert_qualificacoes_de_socios(&record)
-                .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&record));
+            self.db.upsert_natureza_juridica(&record).expect(&format!(
+                "Erro ao inserir o seguinte registro: {:?}",
+                &record
+            ));
 
             self.num_records += 1;
             self.show_progress();
-            
         }
         Ok(())
     }
 
-    fn import_paises<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
+    fn import_qualificacoes_de_socios<R>(
+        &mut self,
+        mut rdr: Reader<R>,
+    ) -> Result<(), Box<dyn Error>>
+    where
+        R: io::Read,
+    {
         let mut raw_record = csv::ByteRecord::new();
 
         while rdr.read_byte_record(&mut raw_record)? {
-            let id: u16 = std::str::from_utf8(&raw_record[0]).unwrap().parse().unwrap();
-            let nome =  ISO_8859_15.decode(&raw_record[1], DecoderTrap::Strict)?;
-            let record = NewPais {
-                id,
-                nome,
-            };
+            let id: u8 = std::str::from_utf8(&raw_record[0])
+                .unwrap()
+                .parse()
+                .unwrap();
+            let nome = ISO_8859_15.decode(&raw_record[1], DecoderTrap::Strict)?;
+            let record = NewQualificacaoDeSocio { id, nome };
 
-            self.db.upsert_paises(&record)
-                .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&record));
-
-            self.num_records += 1;
-            self.show_progress();
-            
-        }
-        Ok(())
-    }
-    
-    fn import_municipios<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
-        let mut raw_record = csv::ByteRecord::new();
-
-        while rdr.read_byte_record(&mut raw_record)? {
-            let id: u16 = std::str::from_utf8(&raw_record[0]).unwrap().parse().unwrap();
-            let nome =  ISO_8859_15.decode(&raw_record[1], DecoderTrap::Strict)?;
-            let record = NewMunicipio {
-                id,
-                nome,
-            };
-
-            self.db.upsert_municipios(&record)
-                .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&record));
+            self.db
+                .upsert_qualificacoes_de_socios(&record)
+                .expect(&format!(
+                    "Erro ao inserir o seguinte registro: {:?}",
+                    &record
+                ));
 
             self.num_records += 1;
             self.show_progress();
-            
         }
         Ok(())
     }
 
-    fn import_motivos_de_situacoes_cadastrais<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>> where R: io::Read, {
+    fn import_paises<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>>
+    where
+        R: io::Read,
+    {
         let mut raw_record = csv::ByteRecord::new();
 
         while rdr.read_byte_record(&mut raw_record)? {
-            let id: u8 = std::str::from_utf8(&raw_record[0]).unwrap().parse().unwrap();
-            let nome =  ISO_8859_15.decode(&raw_record[1], DecoderTrap::Strict)?;
-            let record = NewMotivoDeSituacaoCadastral {
-                id,
-                nome,
-            };
+            let id: u16 = std::str::from_utf8(&raw_record[0])
+                .unwrap()
+                .parse()
+                .unwrap();
+            let nome = ISO_8859_15.decode(&raw_record[1], DecoderTrap::Strict)?;
+            let record = NewPais { id, nome };
 
-            self.db.upsert_motivo_de_situacao_cadastral(&record)
-                .expect(&format!("Erro ao inserir o seguinte registro: {:?}",&record));
+            self.db.upsert_paises(&record).expect(&format!(
+                "Erro ao inserir o seguinte registro: {:?}",
+                &record
+            ));
 
             self.num_records += 1;
             self.show_progress();
-            
+        }
+        Ok(())
+    }
+
+    fn import_municipios<R>(&mut self, mut rdr: Reader<R>) -> Result<(), Box<dyn Error>>
+    where
+        R: io::Read,
+    {
+        let mut raw_record = csv::ByteRecord::new();
+
+        while rdr.read_byte_record(&mut raw_record)? {
+            let id: u16 = std::str::from_utf8(&raw_record[0])
+                .unwrap()
+                .parse()
+                .unwrap();
+            let nome = ISO_8859_15.decode(&raw_record[1], DecoderTrap::Strict)?;
+            let record = NewMunicipio { id, nome };
+
+            self.db.upsert_municipios(&record).expect(&format!(
+                "Erro ao inserir o seguinte registro: {:?}",
+                &record
+            ));
+
+            self.num_records += 1;
+            self.show_progress();
+        }
+        Ok(())
+    }
+
+    fn import_motivos_de_situacoes_cadastrais<R>(
+        &mut self,
+        mut rdr: Reader<R>,
+    ) -> Result<(), Box<dyn Error>>
+    where
+        R: io::Read,
+    {
+        let mut raw_record = csv::ByteRecord::new();
+
+        while rdr.read_byte_record(&mut raw_record)? {
+            let id: u8 = std::str::from_utf8(&raw_record[0])
+                .unwrap()
+                .parse()
+                .unwrap();
+            let nome = ISO_8859_15.decode(&raw_record[1], DecoderTrap::Strict)?;
+            let record = NewMotivoDeSituacaoCadastral { id, nome };
+
+            self.db
+                .upsert_motivo_de_situacao_cadastral(&record)
+                .expect(&format!(
+                    "Erro ao inserir o seguinte registro: {:?}",
+                    &record
+                ));
+
+            self.num_records += 1;
+            self.show_progress();
         }
         Ok(())
     }
@@ -592,7 +698,7 @@ impl<'a> Import<'a> {
     fn records_per_seconds(&self) -> u64 {
         let duration_in_seconds = self.duration_in_seconds();
         if duration_in_seconds == 0 {
-            return self.num_records as u64
+            return self.num_records as u64;
         };
 
         self.num_records as u64 / duration_in_seconds
