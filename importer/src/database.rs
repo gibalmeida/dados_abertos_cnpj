@@ -228,10 +228,10 @@ impl<'a> Database<'a> {
         }
     }
 
-    pub fn upsert_empresa(&self, new_empresa: &Vec<NewEmpresa>) -> QueryResult<usize> {
+    pub fn upsert_empresa(&self, new_empresa: &Vec<NewEmpresa>, force_upsert: bool) -> QueryResult<usize> {
         use data_models::schema::empresas;
 
-        if self.config.truncate_table() || self.config.empty() {
+        if !force_upsert && (self.config.truncate_table() || self.config.empty()) {
             // se a tabela foi zerada, então é melhor utilizar o insert ao invés do replace_into
             return diesel::insert_into(empresas::table)
                 .values(new_empresa)
@@ -246,10 +246,11 @@ impl<'a> Database<'a> {
     pub fn upsert_estabelecimento(
         &self,
         new_estabelecimento: &Vec<NewEstabelecimento>,
+        force_upsert: bool
     ) -> QueryResult<usize> {
         use data_models::schema::estabelecimentos;
 
-        if self.config.truncate_table() || self.config.empty() {
+        if !force_upsert && (self.config.truncate_table() || self.config.empty()) {
             // se a tabela foi zerada, então é melhor utilizar o insert ao invés do replace_into
             return diesel::insert_into(estabelecimentos::table)
                 .values(new_estabelecimento)
@@ -264,10 +265,11 @@ impl<'a> Database<'a> {
     pub fn upsert_socio(
         &self,
         new_socio: &Vec<NewSocio>,
+        force_upsert: bool
     ) -> QueryResult<usize> {
         use data_models::schema::socios;
 
-        if self.config.truncate_table() || self.config.empty() {
+        if !force_upsert && (self.config.truncate_table() || self.config.empty()) {
             // se a tabela foi zerada, então é melhor utilizar o insert ao invés do replace_into
             return diesel::insert_into(socios::table)
                 .values(new_socio)
@@ -282,10 +284,11 @@ impl<'a> Database<'a> {
     pub fn upsert_simples(
         &self,
         new_simples: &Vec<NewSimples>,
+        force_upsert: bool
     ) -> QueryResult<usize> {
         use data_models::schema::simples;
 
-        if self.config.truncate_table() || self.config.empty() {
+        if !force_upsert && (self.config.truncate_table() || self.config.empty()) {
             // se a tabela foi zerada, então é melhor utilizar o insert ao invés do replace_into
             return diesel::insert_into(simples::table)
                 .values(new_simples)

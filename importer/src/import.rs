@@ -300,14 +300,14 @@ impl<'a> Import<'a> {
 
             if records.len() == self.config.rows_per_insert() {
                 self.db
-                    .upsert_empresa(&records)
+                    .upsert_empresa(&records, self.num_records < 5) // força um upsert nos primeiros 5 registros, pois os registros dos arquivos a serem importados podem conter linhas repetidas no início do arquivo com relação ao arquivo anterior. Normalmente a primeira linha, mas, por segurança, aqui optei pelas 5 primeiras linhas.
                     .expect(&format!("Erro ao inserir registros na tabela de empresas!"));
                 records.clear();
                 self.show_progress();
             }
         }
         self.db
-            .upsert_empresa(&records)
+            .upsert_empresa(&records, false)
             .expect(&format!("Erro ao inserir registros na tabela de empresas!"));
 
         Ok(())
@@ -406,7 +406,8 @@ impl<'a> Import<'a> {
             self.num_records += 1;
 
             if records.len() == self.config.rows_per_insert() {
-                self.db.upsert_estabelecimento(&records).expect(&format!(
+                self.db.upsert_estabelecimento(&records, self.num_records < 5) // força um upsert nos primeiros 5 registros, pois os registros dos arquivos a serem importados podem conter linhas repetidas no início do arquivo com relação ao arquivo anterior. Normalmente a primeira linha, mas, por segurança, aqui optei pelas 5 primeiras linhas.
+                .expect(&format!(
                     "Erro ao inserir registros na tabela de estabelecimentos!"
                 ));
                 records.clear();
@@ -414,7 +415,7 @@ impl<'a> Import<'a> {
             }
         }
 
-        self.db.upsert_estabelecimento(&records).expect(&format!(
+        self.db.upsert_estabelecimento(&records, false).expect(&format!(
             "Erro ao inserir registros na tabela de estabelecimentos!"
         ));
 
@@ -461,7 +462,7 @@ impl<'a> Import<'a> {
 
             if records.len() == self.config.rows_per_insert() {
                 self.db
-                    .upsert_socio(&records)
+                    .upsert_socio(&records, self.num_records < 5) // força um upsert nos primeiros 5 registros, pois os registros dos arquivos a serem importados podem conter linhas repetidas no início do arquivo com relação ao arquivo anterior. Normalmente a primeira linha, mas, por segurança, aqui optei pelas 5 primeiras linhas.
                     .expect(&format!("Erro ao inserir registros na tabela de socios!"));
                 records.clear();
                 self.show_progress();
@@ -469,7 +470,7 @@ impl<'a> Import<'a> {
         }
 
         self.db
-            .upsert_socio(&records)
+            .upsert_socio(&records, false)
             .expect(&format!("Erro ao inserir registros na tabela de socios!"));
 
         Ok(())
@@ -505,7 +506,7 @@ impl<'a> Import<'a> {
 
             if records.len() == self.config.rows_per_insert() {
                 self.db
-                    .upsert_simples(&records)
+                    .upsert_simples(&records, self.num_records < 5) // força um upsert nos primeiros 5 registros, pois os registros dos arquivos a serem importados podem conter linhas repetidas no início do arquivo com relação ao arquivo anterior. Normalmente a primeira linha, mas, por segurança, aqui optei pelas 5 primeiras linhas.
                     .expect(&format!("Erro ao inserir registros na tabela do simples!"));
                 records.clear();
                 self.show_progress();
@@ -513,7 +514,7 @@ impl<'a> Import<'a> {
         }
 
         self.db
-            .upsert_simples(&records)
+            .upsert_simples(&records, false)
             .expect(&format!("Erro ao inserir registros na tabela do simples!"));
 
         Ok(())
