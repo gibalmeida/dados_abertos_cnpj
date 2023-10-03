@@ -264,6 +264,7 @@ impl<'a> Import<'a> {
     {
         let mut raw_record = csv::ByteRecord::new();
         let mut records: Vec<NewEmpresa> = Vec::with_capacity(self.config.rows_per_insert());
+        let mut previous_cnpj_basico: Option<String> = None;
 
         while rdr.read_byte_record(&mut raw_record)? {
             let record: EmpresaCsvRecord = raw_record.deserialize(None).expect(&format!(
@@ -278,8 +279,14 @@ impl<'a> Import<'a> {
                 Err(_e) => "ER".to_string(),
             };
 
-            if !razao_social.is_empty() {
+            if !razao_social.is_empty()
+                && previous_cnpj_basico.as_deref() != Some(&record.cnpj_basico)
+            {
                 // se a Razão Social estiver em branco o registro é inválido
+                // ou se o mesmo CNPJ Básico já foi processado, deve ser ignorado senão vai dar chave
+                // duplicada no banco de dados.
+
+                previous_cnpj_basico = Some(record.cnpj_basico.clone());
 
                 records.push(NewEmpresa {
                     cnpj_basico: record.cnpj_basico,
@@ -321,6 +328,10 @@ impl<'a> Import<'a> {
 
         let mut records: Vec<NewEstabelecimento> =
             Vec::with_capacity(self.config.rows_per_insert());
+
+        let mut previous_cnpj_basico: Option<String> = None;
+        let mut previous_cnpj_ordem: Option<String> = None;
+        let mut previous_cnpj_dv: Option<String> = None;
 
         while rdr.read_byte_record(&mut raw_record)? {
             let record: EstabelecimentoCsvRecord = raw_record.deserialize(None).expect(&format!(
@@ -368,56 +379,71 @@ impl<'a> Import<'a> {
                     .unwrap(),
             );
 
-            records.push(NewEstabelecimento {
-                cnpj_basico: record.cnpj_basico,
-                cnpj_ordem: record.cnpj_ordem,
-                cnpj_dv: record.cnpj_dv,
-                identificador_matriz_filial: record.identificador_matriz_filial,
-                nome_fantasia,
-                situacao_cadastral: record.situacao_cadastral,
-                data_situacao_cadastral: naive_date_from_str(record.data_situacao_cadastral),
-                motivo_situacao_cadastral: record.motivo_situacao_cadastral,
-                nome_da_cidade_no_exterior,
-                pais: record.pais,
-                data_de_inicio_da_atividade: naive_date_from_str(
-                    record.data_de_inicio_da_atividade,
-                ),
-                cnae_fiscal_principal: record.cnae_fiscal_principal,
-                cnae_fiscal_secundaria: record.cnae_fiscal_secundaria,
-                tipo_logradouro,
-                logradouro,
-                numero,
-                complemento,
-                bairro,
-                cep: record.cep,
-                uf: record.uf,
-                municipio: record.municipio,
-                ddd1: record.ddd1,
-                telefone1: record.telefone1,
-                ddd2: record.ddd2,
-                telefone2: record.telefone2,
-                ddd_fax: record.ddd_fax,
-                telefone_fax: record.telefone_fax,
-                correio_eletronico,
-                situacao_especial: record.situacao_especial,
-                data_situacao_especial: naive_date_from_str(record.data_situacao_especial),
-            });
+            if previous_cnpj_basico.as_deref() != Some(&record.cnpj_basico)
+                && previous_cnpj_ordem.as_deref() != Some(&record.cnpj_ordem)
+                && previous_cnpj_dv.as_deref() != Some(&record.cnpj_dv)
+            {
+                // se o mesmo CNPJ já foi processado, deve ser ignorado, pois senão vai dar chave
+                // duplicada no banco de dados.
 
-            self.num_records += 1;
+                previous_cnpj_basico = Some(record.cnpj_basico.clone());
+                previous_cnpj_ordem = Some(record.cnpj_ordem.clone());
+                previous_cnpj_dv = Some(record.cnpj_dv.clone());
 
-            if records.len() == self.config.rows_per_insert() {
-                self.db.upsert_estabelecimento(&records, self.num_records < 5) // força um upsert nos primeiros 5 registros, pois os registros dos arquivos a serem importados podem conter linhas repetidas no início do arquivo com relação ao arquivo anterior. Normalmente a primeira linha, mas, por segurança, aqui optei pelas 5 primeiras linhas.
-                .expect(&format!(
-                    "Erro ao inserir registros na tabela de estabelecimentos!"
-                ));
-                records.clear();
-                self.show_progress();
+                records.push(NewEstabelecimento {
+                    cnpj_basico: record.cnpj_basico,
+                    cnpj_ordem: record.cnpj_ordem,
+                    cnpj_dv: record.cnpj_dv,
+                    identificador_matriz_filial: record.identificador_matriz_filial,
+                    nome_fantasia,
+                    situacao_cadastral: record.situacao_cadastral,
+                    data_situacao_cadastral: naive_date_from_str(record.data_situacao_cadastral),
+                    motivo_situacao_cadastral: record.motivo_situacao_cadastral,
+                    nome_da_cidade_no_exterior,
+                    pais: record.pais,
+                    data_de_inicio_da_atividade: naive_date_from_str(
+                        record.data_de_inicio_da_atividade,
+                    ),
+                    cnae_fiscal_principal: record.cnae_fiscal_principal,
+                    cnae_fiscal_secundaria: record.cnae_fiscal_secundaria,
+                    tipo_logradouro,
+                    logradouro,
+                    numero,
+                    complemento,
+                    bairro,
+                    cep: record.cep,
+                    uf: record.uf,
+                    municipio: record.municipio,
+                    ddd1: record.ddd1,
+                    telefone1: record.telefone1,
+                    ddd2: record.ddd2,
+                    telefone2: record.telefone2,
+                    ddd_fax: record.ddd_fax,
+                    telefone_fax: record.telefone_fax,
+                    correio_eletronico,
+                    situacao_especial: record.situacao_especial,
+                    data_situacao_especial: naive_date_from_str(record.data_situacao_especial),
+                });
+
+                self.num_records += 1;
+
+                if records.len() == self.config.rows_per_insert() {
+                    self.db
+                        .upsert_estabelecimento(&records, self.num_records < 5) // força um upsert nos primeiros 5 registros, pois os registros dos arquivos a serem importados podem conter linhas repetidas no início do arquivo com relação ao arquivo anterior. Normalmente a primeira linha, mas, por segurança, aqui optei pelas 5 primeiras linhas.
+                        .expect(&format!(
+                            "Erro ao inserir registros na tabela de estabelecimentos!"
+                        ));
+                    records.clear();
+                    self.show_progress();
+                }
             }
         }
 
-        self.db.upsert_estabelecimento(&records, false).expect(&format!(
-            "Erro ao inserir registros na tabela de estabelecimentos!"
-        ));
+        self.db
+            .upsert_estabelecimento(&records, false)
+            .expect(&format!(
+                "Erro ao inserir registros na tabela de estabelecimentos!"
+            ));
 
         Ok(())
     }
